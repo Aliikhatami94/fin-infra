@@ -1,12 +1,18 @@
 [tool.poetry]
 name = "fin-infra"
 version = "0.1.0"
-description = "Financial infrastructure toolkit: banking connections, market data, credit, cashflows, and brokerage integrations"
+description = "Financial infrastructure toolkit: banking connections, market data, credit, tax, brokerage, and cashflow analysis"
 authors = ["Ali Khatami <aliikhatami94@gmail.com>"]
 license = "MIT"
 readme = "README.md"
 packages = [{ include = "fin_infra", from = "src" }]
-keywords = ["finance", "banking", "plaid", "brokerage", "markets", "credit", "cashflow", "infra", "sdk"]
+keywords = ["finance", "banking", "plaid", "brokerage", "markets", "credit", "tax", "cashflow", "fintech", "infra"]
+include = [
+    "src/fin_infra/py.typed",
+    "src/fin_infra/docs/**/*",
+    "src/fin_infra/bundled_docs/**/*"
+]
+
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
@@ -16,6 +22,9 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
+    "Topic :: Office/Business :: Financial",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Framework :: FastAPI",
     "Typing :: Typed"
 ]
 
@@ -55,6 +64,10 @@ pytest = "^8.3.2"
 pytest-asyncio = "^0.23.8"
 mypy = "^1.11.2"
 ruff = "^0.6.9"
+black = "^24.8.0"
+isort = "^5.13.2"
+flake8 = "^7.1.1"
+pre-commit = "^4.0.0"
 types-requests = "^2.32.0.20241016"
 
 [tool.pytest.ini_options]

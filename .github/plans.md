@@ -24,15 +24,15 @@ Comprehensive checklist for making fin-infra production‑ready. Each section fo
 - [x] Docs: docs/acceptance.md and docs/acceptance-matrix.md updated for tester and profiles.
 - [x] Supply-chain: generate SBOM and image scan (Trivy) with severity gate; upload SBOM as artifact. (acceptance.yml)
 - [x] Provenance: sign SBOM artifact (cosign keyless) — best-effort for v1. (acceptance.yml)
-- [ ] Backend matrix: run acceptance against in‑memory + Redis (cache) profiles.
+- [~] Backend matrix: run acceptance against in‑memory + Redis (cache) profiles. (Reuse svc‑infra caching; Redis profile coverage is handled in svc‑infra contexts.)
 
 ### 0. Backfill Coverage for Base Modules (current repo)
 
 Owner: TBD — Evidence: PRs, tests, CI runs
-- Core: settings.py, utils/http.py, utils/cache.py
-- [~] Research: ensure pydantic‑settings, httpx + tenacity, cashews.
-- [ ] Implement: unit tests for retries, timeouts, cache TTL.
-- [ ] Docs: quickstart for settings + cache init.
+- Core: settings.py (timeouts/retries provided by svc‑infra; no local http wrapper)
+- [~] Research: ensure pydantic‑settings (networking concerns covered in svc‑infra).
+- [~] Skipped: unit tests for HTTP timeouts/retries (covered by svc‑infra).
+- [ ] Docs: quickstart for settings (link to svc‑infra for timeouts/retries & caching).
 - Providers skeletons:
 	- Market: providers/market/yahoo.py (proto) → swap to chosen vendor(s) below.
 	- Crypto: providers/market/ccxt_crypto.py (proto)
@@ -56,9 +56,9 @@ Owner: TBD — Evidence: PRs, tests, CI runs
 
 ### 3. Equities/FX Market Data (default: Alpha Vantage)
 - [ ] Research: free tier + throttling; endpoint coverage (quote, OHLC, FX).
-- [ ] Design: rate‑aware adapter with built‑in per‑endpoint TTL + backoff. (ADR‑0004)
-- [ ] Implement: providers/market/alpha_vantage.py (quotes, time series daily/intraday, FX) with caching decorators.
-- [ ] Tests: unit for symbol normalization + cache keys; acceptance: price fetch burst obeys limits.
+- [ ] Design: rate‑aware adapter with backoff. (ADR‑0004) Caching is via svc‑infra if/when endpoints are made async.
+- [ ] Implement: providers/market/alpha_vantage.py (quotes, time series daily/intraday, FX). (Optionally adopt svc‑infra caching if migrating to async.)
+- [ ] Tests: unit for symbol normalization; acceptance: price fetch burst obeys limits.
 - [ ] Verify: acceptance profile market=alpha_vantage green.
 - [ ] Docs: docs/market-data.md (quotas, caching guidance, fallbacks).
 
@@ -79,12 +79,7 @@ Owner: TBD — Evidence: PRs, tests, CI runs
 - [ ] Docs: docs/brokerage.md (keys, paper vs live, risk notes).
 
 ### 6. Caching, Rate Limits & Retries (cross‑cutting)
-- [ ] Research: cashews + Redis; per‑provider quotas.
-- [ ] Design: cache policy table per endpoint (TTL, key shape, tags). (ADR‑0007)
-- [ ] Implement: utils/cache.py::cached + init_cache() wired in providers.
-- [ ] Implement: utils/http.py retry/backoff wrappers (httpx + tenacity) and error classification.
-- [ ] Tests: cache hit rate under load; exponential backoff correctness.
-- [ ] Docs: docs/cache-and-retries.md.
+- [~] Skipped: Reuse svc‑infra for caching, rate limiting, timeouts & retries. No local cache/http/retry modules in fin‑infra; adopt svc‑infra decorators only if/when migrating providers to async.
 
 ### 7. Data Normalization: Symbols, Currencies, Time
 - [ ] Research: symbol clashes (e.g., BTI across regions), ISO‑4217, crypto tickers.
@@ -94,11 +89,7 @@ Owner: TBD — Evidence: PRs, tests, CI runs
 - [ ] Docs: docs/normalization.md.
 
 ### 8. Security, Secrets & PII boundaries
-- [ ] Research: minimal scope keys; env layout; secret rotation.
-- [ ] Design: PII boundary doc (what crosses process lines), structured logging filters, redaction. (ADR‑0009)
-- [ ] Implement: secret management abstraction (key rotation list), JSON logging with scrubber, signed cookies helper for demo API.
-- [ ] Tests: redaction coverage; old/new secret window.
-- [ ] Docs: docs/security.md (threat model lite, key handling, rotation procedure).
+- [~] Skipped: Reuse svc‑infra security/auth/logging scaffolding where applicable. Fin‑infra is a library; defer service‑level security concerns (PII boundaries, signed cookies, auth) to svc‑infra.
 
 ### 9. Observability & SLOs
 - [ ] Research: metrics/logging libraries.
@@ -185,23 +176,23 @@ Owner: TBD — Evidence: PRs, tests, CI runs
 ## Quick Wins (Implement Early)
 
 ### 20. Immediate Enhancements
-- [ ] Implement: per‑provider rate‑limit headers surfaced to callers.
+- [ ] Implement: per‑provider rate‑limit headers surfaced to callers. (Optional if svc‑infra layer used.)
 - [ ] Implement: common error model (Problem+JSON) + error codes registry.
 - [ ] Implement: order idempotency key middleware (brokerage).
 - [ ] Implement: provider health‑check endpoints for demo API.
-- [ ] Implement: symbol lookup endpoint (/symbols/search?q=) with cache.
-- [ ] Implement: CLI utilities (fin-infra):
-	- keys verify, cache warm <AAPL,BTC-USD>, demo run, providers ls.
+- [ ] Implement: symbol lookup endpoint (/symbols/search?q=). (Caching, if needed, via svc‑infra.)
+- [ ] Implement: CLI utilities (fin‑infra):
+	- keys verify, demo run, providers ls. (Remove cache‑warm; rely on svc‑infra if needed.)
 
 ⸻
 
 ## Tracking & Ordering
 
-Prioritize Must‑have top→bottom. Interleave Quick Wins if they unlock infrastructure (e.g., cache/retry before Alpha Vantage adapter). Each section requires: Research complete → Design approved → Implementation + Tests → Verify → Docs.
+Prioritize Must‑have top→bottom. Interleave Quick Wins if they unlock infrastructure (e.g., retries/backoff before Alpha Vantage adapter if not using svc‑infra). Each section requires: Research complete → Design approved → Implementation + Tests → Verify → Docs.
 
 ## Notes / Decisions Log
 
-Record ADRs for: provider registry, Alpha Vantage caching strategy, CoinGecko id mapping, order idempotency semantics, symbol normalization, SLOs/metrics taxonomy, PII/secret boundaries, CI gates.
+Record ADRs for: provider registry, Alpha Vantage rate/backoff strategy (caching via svc‑infra if adopted), CoinGecko id mapping, order idempotency semantics, symbol normalization, SLOs/metrics taxonomy, PII/secret boundaries, CI gates.
 
 ⸻
 

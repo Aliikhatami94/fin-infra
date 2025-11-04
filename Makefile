@@ -1,10 +1,33 @@
 SHELL := /bin/bash
 RMI ?= all
 
-.PHONY: accept compose_up wait seed down pytest_accept unit unitv clean clean-pycache test lint type
+.PHONY: help accept compose_up wait seed down pytest_accept unit unitv clean clean-pycache test lint type format
 
 DC_FILE := docker-compose.test.yml
 COMPOSE := docker compose -f $(DC_FILE)
+
+help: ## Show available commands
+	@echo "Available commands:"
+	@echo ""
+	@echo "Testing:"
+	@echo "  unit              Run unit tests (quiet)"
+	@echo "  unitv             Run unit tests (verbose)"
+	@echo "  accept            Run acceptance tests"
+	@echo "  test              Run all tests (unit + acceptance)"
+	@echo ""
+	@echo "Code Quality:"
+	@echo "  format            Format code with black and isort"
+	@echo "  lint              Lint code with flake8 and ruff"
+	@echo "  type              Type check with mypy"
+	@echo ""
+	@echo "Docker Compose:"
+	@echo "  compose_up        Start test services (if COMPOSE_PROFILES set)"
+	@echo "  down              Tear down test services"
+	@echo ""
+	@echo "Cleanup:"
+	@echo "  clean             Remove caches, build artifacts, logs"
+	@echo "  clean-pycache     Remove only __pycache__ directories"
+	@echo ""
 
 # --- Acceptance ---
 compose_up:
@@ -82,13 +105,34 @@ unitv:
 	poetry install --no-interaction --only main,dev >/dev/null 2>&1 || true; \
 	poetry run pytest -vv tests/unit
 
-# --- Lint / Type ---
+# --- Code Quality ---
+format:
+	@echo "[format] Formatting with black and isort"
+	@if ! command -v poetry >/dev/null 2>&1; then \
+		echo "[format] Poetry is not installed. Please install Poetry (https://python-poetry.org/docs/#installation)"; \
+		exit 2; \
+	fi; \
+	poetry install --no-interaction --only dev >/dev/null 2>&1 || true; \
+	poetry run black . --line-length 100; \
+	poetry run isort . --profile black --line-length 100
+
 lint:
-	@echo "[lint] Running ruff"
+	@echo "[lint] Running flake8 and ruff"
+	@if ! command -v poetry >/dev/null 2>&1; then \
+		echo "[lint] Poetry is not installed. Please install Poetry (https://python-poetry.org/docs/#installation)"; \
+		exit 2; \
+	fi; \
+	poetry install --no-interaction --only dev >/dev/null 2>&1 || true; \
+	poetry run flake8 --select=E,F; \
 	poetry run ruff check .
 
 type:
 	@echo "[type] Running mypy"
+	@if ! command -v poetry >/dev/null 2>&1; then \
+		echo "[type] Poetry is not installed. Please install Poetry (https://python-poetry.org/docs/#installation)"; \
+		exit 2; \
+	fi; \
+	poetry install --no-interaction --only dev >/dev/null 2>&1 || true; \
 	poetry run mypy src
 
 # --- Cleanup helpers ---
