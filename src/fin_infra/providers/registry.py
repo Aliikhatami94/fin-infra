@@ -67,7 +67,7 @@ PROVIDER_MODULES = {
 
 # Default providers for each domain
 DEFAULT_PROVIDERS = {
-    "banking": "plaid",
+    "banking": "teller",  # Changed to Teller (free tier, simpler auth)
     "market": "alphavantage",
     "crypto": "coingecko",
     "brokerage": "alpaca",

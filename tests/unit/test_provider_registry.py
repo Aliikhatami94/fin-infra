@@ -245,16 +245,17 @@ class TestProviderRegistryErrorHandling:
         """Test resolving with name=None uses default provider."""
         registry = ProviderRegistry()
 
-        # Should not raise error for domains with defaults
-        # (Will fail at import since modules don't exist yet, but validates logic)
+        # Should resolve to default provider (teller for banking)
+        # Banking default is now "teller" which exists, so it should succeed
+        provider = registry.resolve("banking", name=None)
+        
+        # Should be a TellerClient instance
+        from fin_infra.providers.banking.teller_client import TellerClient
+        assert isinstance(provider, TellerClient)
+        
+        # Test with a domain that has no implementation yet (should fail)
         with pytest.raises(ProviderNotFoundError) as exc_info:
-            registry.resolve("banking", name=None)
-
-        # Error should mention the provider or class, not None
+            registry.resolve("market", name=None)  # Default is alphavantage which doesn't exist yet
+        
         error_msg = str(exc_info.value)
-        assert (
-            "plaid" in error_msg.lower()
-            or "PlaidClient" in error_msg
-            or "Failed to import" in error_msg
-            or "not found in module" in error_msg
-        )
+        assert "alphavantage" in error_msg.lower() or "Failed to import" in error_msg

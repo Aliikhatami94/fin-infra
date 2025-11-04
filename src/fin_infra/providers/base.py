@@ -28,16 +28,38 @@ class CryptoDataProvider(ABC):
 
 
 class BankingProvider(ABC):
+    """Abstract provider for bank account aggregation (Teller, Plaid, MX)."""
+
     @abstractmethod
     def create_link_token(self, user_id: str) -> str:
+        """Create a link/connect token for user to authenticate with their bank."""
         pass
 
     @abstractmethod
     def exchange_public_token(self, public_token: str) -> dict:
+        """Exchange public token for access token (Plaid flow)."""
         pass
 
     @abstractmethod
     def accounts(self, access_token: str) -> list[dict]:
+        """Fetch accounts for an access token."""
+        pass
+
+    @abstractmethod
+    def transactions(
+        self, access_token: str, *, start_date: str | None = None, end_date: str | None = None
+    ) -> list[dict]:
+        """Fetch transactions for an access token within optional date range."""
+        pass
+
+    @abstractmethod
+    def balances(self, access_token: str, account_id: str | None = None) -> dict:
+        """Fetch current balances for all accounts or specific account."""
+        pass
+
+    @abstractmethod
+    def identity(self, access_token: str) -> dict:
+        """Fetch identity/account holder information."""
         pass
 
 
