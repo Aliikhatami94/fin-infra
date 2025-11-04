@@ -252,13 +252,17 @@ Owner: TBD — Evidence: PRs, tests, CI runs
   - [x] Classification: Type A (financial-specific provider discovery)
   - [x] Justification: Provider registry is financial domain-specific; svc-infra doesn't have financial provider concepts
   - [x] Evidence: fin-infra/src/fin_infra/providers/base.py already has ABCs for Banking, Market, Crypto, Brokerage, Identity, Credit
-- [ ] Research: ABCs for TaxProvider (add to existing base.py).
-- [ ] Design: provider registry with entry‑points + YAML mapping. (ADR‑0002)
-- [ ] Implement: fin_infra/providers/registry.py loader (resolve("banking:teller")).
-- [ ] Implement: Easy builder pattern - `easy_provider(domain, name)` returns configured provider
-- [ ] Tests: dynamic import, fallback on missing providers, feature flags.
-- [ ] Verify: All easy_* functions use registry internally
-- [ ] Docs: docs/providers.md with examples + configuration table + easy builder usage.
+- [x] Research: ABCs for TaxProvider (add to existing base.py) → Added TaxProvider with get_tax_forms, get_tax_document, calculate_crypto_gains
+- [x] Design: provider registry with domain:name mapping (resolve("banking", "teller")).
+- [x] Implement: fin_infra/providers/registry.py loader with ProviderRegistry class
+  - resolve(domain, name, **config) for dynamic loading
+  - list_providers(domain) to discover available providers
+  - Caching for performance
+  - Default provider fallback per domain
+- [x] Implement: Easy builder pattern - global resolve() function returns configured provider
+- [x] Tests: dynamic import, provider listing, error handling, caching → tests/unit/test_provider_registry.py (19 tests passing)
+- [~] Verify: All easy_* functions use registry internally (will implement with each provider in sections 2-5)
+- [x] Docs: docs/providers.md with examples + configuration table + easy builder usage (comprehensive guide created)
 
 ### 2. Banking / Account Aggregation (default: Teller)
 - [ ] **Research (svc-infra check)**:

@@ -42,11 +42,16 @@ Alpha. Core functionality is stable, but the surface is intentionally small whil
 # From PyPI (when published)
 pip install fin-infra
 
+# For backend infrastructure (auth, API, DB, cache, jobs), also install:
+pip install svc-infra
+
 # For development
 git clone https://github.com/your-org/fin-infra
 cd fin-infra
 poetry install
 ```
+
+**Note**: fin-infra provides ONLY financial data integrations. For backend infrastructure (API framework, auth, database, caching, jobs), you need [svc-infra](https://github.com/Aliikhatami94/svc-infra). Applications typically use both packages together.
 
 ### One-Call Setup
 
