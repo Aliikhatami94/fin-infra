@@ -225,19 +225,20 @@ rate = irr([-10000, 3000, 4000, 5000])
 ### 0. Backfill Coverage for Base Modules (current repo)
 
 Owner: TBD — Evidence: PRs, tests, CI runs
-- [ ] **Research (svc-infra check)**:
-  - [~] Check svc-infra for settings patterns (pydantic-settings) → REUSE
-  - [~] Check svc-infra.http for retry/timeout logic → REUSE
-  - [~] Check svc-infra.cache for caching patterns → REUSE
-  - [ ] Classification: Type C (mostly generic settings + financial models)
-  - [ ] Justification: Base settings from svc-infra; financial data models (Quote, Candle, Account, Transaction) are domain-specific
-  - [ ] Reuse plan: Use svc-infra for settings/http/cache; keep financial Pydantic models in fin-infra
+- [x] **Research (svc-infra check)**:
+  - [x] Check svc-infra for settings patterns (pydantic-settings) → NOT NEEDED (fin-infra already has Settings with pydantic-settings)
+  - [x] Check svc-infra.http for retry/timeout logic → FOUND: `svc_infra.http.new_httpx_client()` with retry support
+  - [x] Check svc-infra.cache for caching patterns → FOUND: `init_cache()`, `cache_read`, `cache_write`, `add_cache()`
+  - [x] Classification: Type C (mostly generic settings + financial models)
+  - [x] Justification: Base settings from svc-infra; financial data models (Quote, Candle, Account, Transaction) are domain-specific
+  - [x] Reuse plan: Use svc-infra.http for HTTP clients; use svc-infra.cache for provider caching; keep financial Pydantic models in fin-infra
+  - [x] Evidence: svc-infra/src/svc_infra/http/client.py, svc-infra/src/svc_infra/cache/__init__.py
 - Core: settings.py (timeouts/retries provided by svc‑infra; no local http wrapper)
-- [~] Research: ensure pydantic‑settings (networking concerns covered in svc‑infra).
-- [~] Skipped: unit tests for HTTP timeouts/retries (covered by svc‑infra).
-- [ ] Implement: Easy model exports - `from fin_infra.models import Account, Transaction, Quote, Candle`
-- [ ] Tests: Unit tests for financial data models (validation, serialization)
-- [ ] Docs: quickstart for settings (link to svc‑infra for timeouts/retries & caching) + model reference.
+- [x] Research: ensure pydantic‑settings (networking concerns covered in svc‑infra).
+- [x] Skipped: unit tests for HTTP timeouts/retries (covered by svc‑infra).
+- [x] Implement: Easy model exports - `from fin_infra.models import Account, Transaction, Quote, Candle` (already exists)
+- [x] Tests: Unit tests for financial data models (validation, serialization) → tests/unit/test_models.py (20 tests passing)
+- [x] Docs: quickstart for settings (link to svc‑infra for timeouts/retries & caching) + model reference → docs/getting-started.md (already comprehensive)
 - Providers skeletons:
 	- Market: providers/market/yahoo.py (proto) → swap to chosen vendor(s) below.
 	- Crypto: providers/market/ccxt_crypto.py (proto)
@@ -245,14 +246,15 @@ Owner: TBD — Evidence: PRs, tests, CI runs
 	- Brokerage: providers/brokerage/alpaca.py (paper trading)
 
 ### 1. Provider Registry & Interfaces (plug‑and‑play)
-- [ ] **Research (svc-infra check)**:
-  - [ ] Check if svc-infra has provider registry pattern
-  - [ ] Review svc-infra plugin/extension mechanisms
-  - [ ] Classification: Type A (financial-specific provider discovery)
-  - [ ] Justification: Provider registry is financial domain-specific; svc-infra doesn't have financial provider concepts
-- [ ] Research: ABCs for BankingProvider, MarketDataProvider, CryptoDataProvider, BrokerageProvider, CreditProvider, TaxProvider.
+- [x] **Research (svc-infra check)**:
+  - [x] Check if svc-infra has provider registry pattern → NOT FOUND (not applicable for generic backend)
+  - [x] Review svc-infra plugin/extension mechanisms → NOT FOUND (financial domain-specific)
+  - [x] Classification: Type A (financial-specific provider discovery)
+  - [x] Justification: Provider registry is financial domain-specific; svc-infra doesn't have financial provider concepts
+  - [x] Evidence: fin-infra/src/fin_infra/providers/base.py already has ABCs for Banking, Market, Crypto, Brokerage, Identity, Credit
+- [ ] Research: ABCs for TaxProvider (add to existing base.py).
 - [ ] Design: provider registry with entry‑points + YAML mapping. (ADR‑0002)
-- [ ] Implement: fin_infra/providers/base.py ABCs + registry.py loader (resolve("banking:teller")).
+- [ ] Implement: fin_infra/providers/registry.py loader (resolve("banking:teller")).
 - [ ] Implement: Easy builder pattern - `easy_provider(domain, name)` returns configured provider
 - [ ] Tests: dynamic import, fallback on missing providers, feature flags.
 - [ ] Verify: All easy_* functions use registry internally
