@@ -253,3 +253,124 @@ class TestBrokerageRoutes:
         assert data["symbol"] == "AAPL"
         assert data["status"] == "new"
         mock_provider.submit_order.assert_called_once()
+
+
+class TestWatchlistRoutes:
+    """Test watchlist-related FastAPI routes."""
+    
+    @pytest.fixture
+    def app_with_brokerage(self):
+        """Create FastAPI app with mocked brokerage provider."""
+        from fastapi import FastAPI
+        from fastapi.testclient import TestClient
+        from fin_infra.brokerage import add_brokerage
+        from unittest.mock import Mock
+        
+        app = FastAPI()
+        
+        # Mock the provider
+        mock_provider = Mock()
+        mock_provider.create_watchlist.return_value = {
+            "id": "wl_123",
+            "name": "Tech Stocks",
+            "symbols": ["AAPL", "GOOGL"]
+        }
+        mock_provider.list_watchlists.return_value = [
+            {"id": "wl_123", "name": "Tech Stocks", "symbols": ["AAPL"]},
+            {"id": "wl_456", "name": "Finance", "symbols": ["JPM"]}
+        ]
+        mock_provider.get_watchlist.return_value = {
+            "id": "wl_123",
+            "name": "Tech Stocks",
+            "symbols": ["AAPL", "GOOGL"]
+        }
+        mock_provider.delete_watchlist.return_value = None
+        mock_provider.add_to_watchlist.return_value = {
+            "id": "wl_123",
+            "name": "Tech Stocks",
+            "symbols": ["AAPL", "GOOGL", "MSFT"]
+        }
+        mock_provider.remove_from_watchlist.return_value = {
+            "id": "wl_123",
+            "name": "Tech Stocks",
+            "symbols": ["AAPL"]
+        }
+        
+        # Add brokerage with mocked provider
+        with patch("fin_infra.brokerage.easy_brokerage", return_value=mock_provider):
+            add_brokerage(app, mode="paper")
+        
+        client = TestClient(app)
+        return client, mock_provider
+    
+    def test_create_watchlist_endpoint(self, app_with_brokerage):
+        """Should create a new watchlist."""
+        client, mock_provider = app_with_brokerage
+        
+        response = client.post("/brokerage/watchlists?name=Tech Stocks&symbols=AAPL&symbols=GOOGL")
+        
+        assert response.status_code == 200
+        data = response.json()
+        assert data["id"] == "wl_123"
+        assert data["name"] == "Tech Stocks"
+        assert len(data["symbols"]) == 2
+        mock_provider.create_watchlist.assert_called_once()
+    
+    def test_list_watchlists_endpoint(self, app_with_brokerage):
+        """Should list all watchlists."""
+        client, mock_provider = app_with_brokerage
+        
+        response = client.get("/brokerage/watchlists")
+        
+        assert response.status_code == 200
+        data = response.json()
+        assert "watchlists" in data
+        assert "count" in data
+        assert len(data["watchlists"]) == 2
+        mock_provider.list_watchlists.assert_called_once()
+    
+    def test_get_watchlist_endpoint(self, app_with_brokerage):
+        """Should get a watchlist by ID."""
+        client, mock_provider = app_with_brokerage
+        
+        response = client.get("/brokerage/watchlists/wl_123")
+        
+        assert response.status_code == 200
+        data = response.json()
+        assert data["id"] == "wl_123"
+        assert data["name"] == "Tech Stocks"
+        mock_provider.get_watchlist.assert_called_once_with("wl_123")
+    
+    def test_delete_watchlist_endpoint(self, app_with_brokerage):
+        """Should delete a watchlist."""
+        client, mock_provider = app_with_brokerage
+        
+        response = client.delete("/brokerage/watchlists/wl_123")
+        
+        assert response.status_code == 200
+        data = response.json()
+        assert "message" in data
+        assert "deleted" in data["message"].lower()
+        mock_provider.delete_watchlist.assert_called_once_with("wl_123")
+    
+    def test_add_to_watchlist_endpoint(self, app_with_brokerage):
+        """Should add a symbol to a watchlist."""
+        client, mock_provider = app_with_brokerage
+        
+        response = client.post("/brokerage/watchlists/wl_123/symbols?symbol=MSFT")
+        
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data["symbols"]) == 3
+        mock_provider.add_to_watchlist.assert_called_once_with("wl_123", "MSFT")
+    
+    def test_remove_from_watchlist_endpoint(self, app_with_brokerage):
+        """Should remove a symbol from a watchlist."""
+        client, mock_provider = app_with_brokerage
+        
+        response = client.delete("/brokerage/watchlists/wl_123/symbols/GOOGL")
+        
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data["symbols"]) == 1
+        mock_provider.remove_from_watchlist.assert_called_once_with("wl_123", "GOOGL")

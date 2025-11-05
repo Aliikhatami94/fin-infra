@@ -354,6 +354,90 @@ def add_brokerage(
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Error fetching portfolio history: {str(e)}")
     
+    # Watchlist routes
+    @router.post("/watchlists")
+    async def create_watchlist(
+        name: str = Query(..., description="Watchlist name"),
+        symbols: list[str] = Query(default=[], description="Initial symbols")
+    ):
+        """Create a new watchlist.
+        
+        Args:
+            name: Watchlist name
+            symbols: Optional list of symbols to add initially
+        """
+        try:
+            watchlist = brokerage_provider.create_watchlist(name=name, symbols=symbols)
+            return watchlist
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=f"Error creating watchlist: {str(e)}")
+    
+    @router.get("/watchlists")
+    async def list_watchlists():
+        """List all watchlists."""
+        try:
+            watchlists = brokerage_provider.list_watchlists()
+            return {"watchlists": watchlists, "count": len(watchlists)}
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Error fetching watchlists: {str(e)}")
+    
+    @router.get("/watchlists/{watchlist_id}")
+    async def get_watchlist(watchlist_id: str):
+        """Get a watchlist by ID.
+        
+        Args:
+            watchlist_id: Watchlist ID
+        """
+        try:
+            watchlist = brokerage_provider.get_watchlist(watchlist_id)
+            return watchlist
+        except Exception as e:
+            raise HTTPException(status_code=404, detail=f"Watchlist not found: {str(e)}")
+    
+    @router.delete("/watchlists/{watchlist_id}")
+    async def delete_watchlist(watchlist_id: str):
+        """Delete a watchlist.
+        
+        Args:
+            watchlist_id: Watchlist ID
+        """
+        try:
+            brokerage_provider.delete_watchlist(watchlist_id)
+            return {"message": f"Watchlist {watchlist_id} deleted successfully"}
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=f"Error deleting watchlist: {str(e)}")
+    
+    @router.post("/watchlists/{watchlist_id}/symbols")
+    async def add_to_watchlist(
+        watchlist_id: str,
+        symbol: str = Query(..., description="Symbol to add")
+    ):
+        """Add a symbol to a watchlist.
+        
+        Args:
+            watchlist_id: Watchlist ID
+            symbol: Symbol to add
+        """
+        try:
+            watchlist = brokerage_provider.add_to_watchlist(watchlist_id, symbol)
+            return watchlist
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=f"Error adding symbol: {str(e)}")
+    
+    @router.delete("/watchlists/{watchlist_id}/symbols/{symbol}")
+    async def remove_from_watchlist(watchlist_id: str, symbol: str):
+        """Remove a symbol from a watchlist.
+        
+        Args:
+            watchlist_id: Watchlist ID
+            symbol: Symbol to remove
+        """
+        try:
+            watchlist = brokerage_provider.remove_from_watchlist(watchlist_id, symbol)
+            return watchlist
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=f"Error removing symbol: {str(e)}")
+    
     # Mount router
     app.include_router(router, include_in_schema=True)
     

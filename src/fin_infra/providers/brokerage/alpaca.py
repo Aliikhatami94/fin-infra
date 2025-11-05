@@ -229,6 +229,74 @@ class AlpacaBrokerage(BrokerageProvider):
         history = self.client.get_portfolio_history(period=period, timeframe=timeframe)
         return self._extract_raw(history)
     
+    def create_watchlist(self, name: str, symbols: list[str] | None = None) -> dict:
+        """Create a new watchlist.
+        
+        Args:
+            name: Watchlist name
+            symbols: Optional list of symbols to add initially
+        
+        Returns:
+            Watchlist dict with id, name, symbols
+        """
+        watchlist = self.client.create_watchlist(name=name, symbols=symbols or [])
+        return self._extract_raw(watchlist)
+    
+    def get_watchlist(self, watchlist_id: str) -> dict:
+        """Get a watchlist by ID.
+        
+        Args:
+            watchlist_id: Watchlist ID
+        
+        Returns:
+            Watchlist dict with id, name, symbols
+        """
+        watchlist = self.client.get_watchlist(watchlist_id)
+        return self._extract_raw(watchlist)
+    
+    def list_watchlists(self) -> list[dict]:
+        """List all watchlists for the account.
+        
+        Returns:
+            List of watchlist dicts
+        """
+        watchlists = self.client.get_watchlists()
+        return [self._extract_raw(w) for w in watchlists]
+    
+    def delete_watchlist(self, watchlist_id: str) -> None:
+        """Delete a watchlist.
+        
+        Args:
+            watchlist_id: Watchlist ID
+        """
+        self.client.delete_watchlist(watchlist_id)
+    
+    def add_to_watchlist(self, watchlist_id: str, symbol: str) -> dict:
+        """Add a symbol to a watchlist.
+        
+        Args:
+            watchlist_id: Watchlist ID
+            symbol: Symbol to add
+        
+        Returns:
+            Updated watchlist dict
+        """
+        watchlist = self.client.add_to_watchlist(watchlist_id, symbol)
+        return self._extract_raw(watchlist)
+    
+    def remove_from_watchlist(self, watchlist_id: str, symbol: str) -> dict:
+        """Remove a symbol from a watchlist.
+        
+        Args:
+            watchlist_id: Watchlist ID
+            symbol: Symbol to remove
+        
+        Returns:
+            Updated watchlist dict
+        """
+        watchlist = self.client.delete_from_watchlist(watchlist_id, symbol)
+        return self._extract_raw(watchlist)
+    
     @staticmethod
     def _extract_raw(obj) -> dict:
         """Extract raw dict from Alpaca entity object.

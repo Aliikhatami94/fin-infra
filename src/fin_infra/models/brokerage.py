@@ -153,4 +153,28 @@ class PortfolioHistory(BaseModel):
     }
 
 
-__all__ = ["Order", "Position", "Account", "PortfolioHistory"]
+class Watchlist(BaseModel):
+    """Watchlist for tracking symbols."""
+    
+    id: str = Field(description="Unique watchlist ID")
+    name: str = Field(description="Watchlist name")
+    account_id: str = Field(description="Account ID this watchlist belongs to")
+    symbols: list[str] = Field(default_factory=list, description="List of symbols in watchlist")
+    created_at: datetime = Field(description="Creation timestamp")
+    updated_at: datetime = Field(description="Last update timestamp")
+    
+    model_config = {
+        "json_schema_extra": {
+            "example": {
+                "id": "wl_123456",
+                "name": "Tech Stocks",
+                "account_id": "acc_123456",
+                "symbols": ["AAPL", "GOOGL", "MSFT", "AMZN"],
+                "created_at": "2025-01-15T10:00:00Z",
+                "updated_at": "2025-01-15T12:30:00Z"
+            }
+        }
+    }
+
+
+__all__ = ["Order", "Position", "Account", "PortfolioHistory", "Watchlist"]

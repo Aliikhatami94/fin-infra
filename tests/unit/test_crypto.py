@@ -40,6 +40,160 @@ class TestEasyCrypto:
 class TestAddCryptoData:
     """Test add_crypto_data() FastAPI integration helper."""
     
+    @pytest.fixture
+    def app_with_crypto_mock(self):
+        """Create FastAPI app with mocked crypto provider."""
+        from fastapi import FastAPI
+        from fin_infra.providers.base import CryptoDataProvider
+        
+        app = FastAPI()
+        
+        # Create mock provider (subclass to pass isinstance checks)
+        class MockCryptoProvider(CryptoDataProvider):
+            def ticker(self, symbol: str):
+                pass
+            
+            def ohlcv(self, symbol: str, **kwargs):
+                pass
+        
+        mock_provider = Mock(spec=MockCryptoProvider)
+        
+        # Mock ticker response
+        mock_provider.ticker.return_value = Quote(
+            symbol="BTC/USDT",
+            price=Decimal("45000.00"),
+            as_of=datetime(2025, 1, 15, 12, 30, 0, tzinfo=timezone.utc),
+            currency="USDT"
+        )
+        
+        # Mock ohlcv response
+        mock_provider.ohlcv.return_value = [
+            Candle(
+                ts=int(datetime(2025, 1, 15, tzinfo=timezone.utc).timestamp() * 1000),
+                open=Decimal("44000.00"),
+                high=Decimal("46000.00"),
+                low=Decimal("43500.00"),
+                close=Decimal("45000.00"),
+                volume=Decimal("1000000")
+            ),
+            Candle(
+                ts=int(datetime(2025, 1, 14, tzinfo=timezone.utc).timestamp() * 1000),
+                open=Decimal("43000.00"),
+                high=Decimal("44500.00"),
+                low=Decimal("42800.00"),
+                close=Decimal("44000.00"),
+                volume=Decimal("950000")
+            )
+        ]
+        
+        # Add crypto data with mocked provider
+        add_crypto_data(app, provider=mock_provider)
+        
+        return app, mock_provider
+    
+    def test_routes_mounted(self, app_with_crypto_mock):
+        """Should mount all crypto data routes."""
+        from fastapi.testclient import TestClient
+        
+        app, _ = app_with_crypto_mock
+        client = TestClient(app)
+        
+        # All routes should exist (not 404)
+        response = client.get("/crypto/ticker/BTC-USDT")
+        assert response.status_code != 404
+        
+        response = client.get("/crypto/ohlcv/BTC-USDT")
+        assert response.status_code != 404
+    
+    def test_get_ticker_endpoint(self, app_with_crypto_mock):
+        """Should get ticker for a crypto pair."""
+        from fastapi.testclient import TestClient
+        
+        app, mock_provider = app_with_crypto_mock
+        client = TestClient(app)
+        
+        response = client.get("/crypto/ticker/BTC-USDT")
+        
+        assert response.status_code == 200
+        data = response.json()
+        assert data["symbol"] == "BTC/USDT"
+        assert data["price"] == 45000.00
+        assert "as_of" in data
+        mock_provider.ticker.assert_called_once_with("BTC-USDT")
+    
+    def test_get_ohlcv_endpoint(self, app_with_crypto_mock):
+        """Should get OHLCV candles for a crypto pair."""
+        from fastapi.testclient import TestClient
+        
+        app, mock_provider = app_with_crypto_mock
+        client = TestClient(app)
+        
+        response = client.get("/crypto/ohlcv/BTC-USDT?timeframe=1h&limit=24")
+        
+        assert response.status_code == 200
+        data = response.json()
+        assert data["symbol"] == "BTC-USDT"
+        assert data["timeframe"] == "1h"
+        assert data["count"] == 2
+        assert len(data["candles"]) == 2
+        assert data["candles"][0]["close"] == 45000.00
+        mock_provider.ohlcv.assert_called_once_with("BTC-USDT", timeframe="1h", limit=24)
+    
+    def test_get_ohlcv_default_params(self, app_with_crypto_mock):
+        """Should use default timeframe and limit."""
+        from fastapi.testclient import TestClient
+        
+        app, mock_provider = app_with_crypto_mock
+        client = TestClient(app)
+        
+        response = client.get("/crypto/ohlcv/ETH-USDT")
+        
+        assert response.status_code == 200
+        mock_provider.ohlcv.assert_called_once_with("ETH-USDT", timeframe="1d", limit=100)
+    
+    def test_ticker_provider_error(self, app_with_crypto_mock):
+        """Should return 400 when provider raises error."""
+        from fastapi.testclient import TestClient
+        
+        app, mock_provider = app_with_crypto_mock
+        client = TestClient(app)
+        
+        mock_provider.ticker.side_effect = Exception("Symbol not found")
+        
+        response = client.get("/crypto/ticker/INVALID")
+        
+        assert response.status_code == 400
+        assert "Symbol not found" in response.json()["detail"]
+    
+    def test_custom_prefix(self):
+        """Should support custom prefix."""
+        from fastapi import FastAPI
+        from fastapi.testclient import TestClient
+        from fin_infra.providers.base import CryptoDataProvider
+        
+        # Create mock provider (subclass to pass isinstance checks)
+        class MockCryptoProvider(CryptoDataProvider):
+            def ticker(self, symbol: str):
+                pass
+            
+            def ohlcv(self, symbol: str, **kwargs):
+                pass
+        
+        app = FastAPI()
+        mock_provider = Mock(spec=MockCryptoProvider)
+        mock_provider.ticker.return_value = Quote(
+            symbol="BTC/USDT",
+            price=Decimal("45000.00"),
+            as_of=datetime(2025, 1, 15, 12, 30, 0, tzinfo=timezone.utc),
+            currency="USDT"
+        )
+        
+        add_crypto_data(app, provider=mock_provider, prefix="/api/v1/crypto")
+        client = TestClient(app)
+        
+        response = client.get("/api/v1/crypto/ticker/BTC-USDT")
+        assert response.status_code == 200
+    
     def test_add_crypto_data_mounts_routes(self):
         """Should mount crypto data routes to FastAPI app."""
         from fastapi import FastAPI
