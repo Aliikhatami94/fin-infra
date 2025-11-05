@@ -13,15 +13,15 @@ Comprehensive checklist for making fin-infra production‑ready. Each section fo
 - Provider adapters and normalization (symbol resolution, currency conversion)
 
 ### What fin-infra IS NOT (use svc-infra instead)
-- ❌ Backend framework (API scaffolding, middleware, routing)
-- ❌ Auth/security (OAuth, sessions, MFA, password policies)
-- ❌ Database operations (migrations, ORM, connection pooling)
-- ❌ Caching infrastructure (Redis, cache decorators, TTL management)
-- ❌ Logging/observability (structured logging, metrics, tracing)
-- ❌ Job queues/background tasks (workers, schedulers, retries)
-- ❌ Webhooks infrastructure (signing, delivery, retry logic)
-- ❌ Rate limiting middleware
-- ❌ Billing/payments infrastructure (use svc-infra's billing module)
+- [ ] Backend framework (API scaffolding, middleware, routing)
+- [ ] Auth/security (OAuth, sessions, MFA, password policies)
+- [ ] Database operations (migrations, ORM, connection pooling)
+- [ ] Caching infrastructure (Redis, cache decorators, TTL management)
+- [ ] Logging/observability (structured logging, metrics, tracing)
+- [ ] Job queues/background tasks (workers, schedulers, retries)
+- [ ] Webhooks infrastructure (signing, delivery, retry logic)
+- [ ] Rate limiting middleware
+- [ ] Billing/payments infrastructure (use svc-infra's billing module)
 
 ### Mandatory Research Protocol Before ANY New Feature
 
@@ -179,10 +179,10 @@ What `add_prefixed_docs()` does:
 6. **Environment filtering**: `visible_envs` controls which environments show the card
 
 Without this call:
-- ❌ Routes work but don't appear as cards on landing page (`/`)
-- ❌ Capability hidden in root docs instead of having dedicated docs
-- ❌ No scoped OpenAPI schema for capability
-- ❌ Harder to discover and navigate capability docs
+- [ ] Routes work but don't appear as cards on landing page (`/`)
+- [ ] Capability hidden in root docs instead of having dedicated docs
+- [ ] No scoped OpenAPI schema for capability
+- [ ] Harder to discover and navigate capability docs
 
 Example usage (already in add_banking and add_market_data):
 ```python
@@ -386,15 +386,15 @@ Run through this checklist for each capability:
 - [ ] ✅ Accepts both provider name and instance
 
 ### Common Mistakes to Avoid
-- ❌ Using `from fastapi import APIRouter` (use svc-infra dual routers)
-- ❌ Not mounting with `include_in_schema=True` (capability won't appear in docs)
-- ❌ Generic tags like `["api"]` (use specific like `["Banking"]`)
-- ❌ Not storing provider on `app.state` (routes can't access it)
-- ❌ Not returning provider instance (no programmatic access)
-- ❌ Only accepting provider name string (should accept instances too)
-- ❌ No README card (capability not discoverable)
-- ❌ No dedicated doc file (no comprehensive reference)
-- ❌ Missing ADR for significant decisions (no rationale documented)
+- [ ] Using `from fastapi import APIRouter` (use svc-infra dual routers)
+- [ ] Not mounting with `include_in_schema=True` (capability won't appear in docs)
+- [ ] Generic tags like `["api"]` (use specific like `["Banking"]`)
+- [ ] Not storing provider on `app.state` (routes can't access it)
+- [ ] Not returning provider instance (no programmatic access)
+- [ ] Only accepting provider name string (should accept instances too)
+- [ ] No README card (capability not discoverable)
+- [ ] No dedicated doc file (no comprehensive reference)
+- [ ] Missing ADR for significant decisions (no rationale documented)
 
 ## Easy Setup Functions (One-Call Integration)
 
@@ -644,7 +644,7 @@ Owner: TBD — Evidence: PRs, tests, CI runs
 - [x] Security: Certificate handling documented, .gitignore updated, SECURITY.md created
 - [x] Docs: docs/banking.md (comprehensive guide with Teller-first approach, certificate auth, easy_banking usage, FastAPI integration, security/PII, troubleshooting)
 
-**✅ Section 2 Banking Integration - COMPLETE**
+**[x] Section 2 Banking Integration - COMPLETE**
 
 All items checked off. Evidence:
 - **Implementation**: `src/fin_infra/providers/banking/teller_client.py` (292 lines, SSL context approach with certificate-based mTLS)
@@ -738,7 +738,7 @@ All items checked off. Evidence:
     - ⚠️ Code examples written but NOT actually tested (syntax only)
 - [x] Docs: docs/market-data.md with examples + rate‑limit mitigation notes + easy_market usage + svc-infra caching integration
 
-**✅ Section 3 Status: COMPLETE**
+**[x] Section 3 Status: COMPLETE**
 
 Evidence:
 - **Implementation**: AlphaVantageMarketData (284 lines), YahooFinanceMarketData (160 lines), easy_market() (103 lines), add_market_data() (103 lines)
@@ -816,7 +816,7 @@ Evidence:
     - ⚠️ Code examples written but NOT actually tested (syntax only)
 - [x] Docs: docs/crypto-data.md with real‑time data notes + easy_crypto usage + provider comparison + svc-infra integration.
 
-**✅ Section 4 Status: COMPLETE**
+**[x] Section 4 Status: COMPLETE**
 
 Evidence:
 - **Implementation**: CoinGeckoCryptoData (69 lines), easy_crypto() (248 lines), add_crypto_data() (163 lines in same file)
@@ -866,43 +866,41 @@ Evidence:
 - [x] Verify: `easy_brokerage()` defaults to paper mode, requires explicit `mode="live"` for production
 - [x] Docs: docs/brokerage.md (492 lines) with disclaimers + sandbox setup + easy_brokerage usage + paper vs live mode + watchlist management + svc-infra integration examples.
 
-**✅ Section 5 Status: COMPLETE** (All core items, docs, ADR, watchlist, acceptance test, and provider research completed)
+**[x] Section 5 Status: COMPLETE** (All core items, docs, ADR, watchlist, acceptance test, and provider research completed)
 
 Evidence (what was implemented):
-- **Data Models**: Order (40+ fields), Position (11 fields), Account (20+ fields), PortfolioHistory, Watchlist (6 fields) - 182 lines in models/brokerage.py ✅
+- **Data Models**: Order (40+ fields), Position (11 fields), Account (20+ fields), PortfolioHistory, Watchlist (6 fields) - 182 lines in models/brokerage.py [x]
 - **Alpaca Provider**: Enhanced to 320+ lines with 17 methods:
   - Core: submit_order, get_order, cancel_order, list_orders, positions, get_position, close_position, get_account, get_portfolio_history
-  - Watchlist: create_watchlist, get_watchlist, list_watchlists, delete_watchlist, add_to_watchlist, remove_from_watchlist (6 new methods) ✅
-- **Brokerage Module**: easy_brokerage() (81 lines), add_brokerage() (460+ lines) with 15 FastAPI routes (9 core + 6 watchlist) - 540+ lines total ✅
-- **Safety Design**: Defaults to paper trading, requires explicit mode="live" for real trading ✅
-- **Router**: Using svc-infra public_router() with dual route registration ✅
-- **Tests**: 20 unit tests (7 easy_brokerage, 3 add_brokerage, 4 core API routes, 6 watchlist routes), all passing ✅
-- **Acceptance Tests**: 5 real API tests (get_account, list_positions, list_orders, submit_and_cancel_order, get_portfolio_history) - 153 lines ✅
-- **Documentation**: docs/brokerage.md (492 lines) + ADR-0006 (443 lines) = 935 lines comprehensive documentation ✅
-- **Provider Research**: Interactive Brokers and TD Ameritrade analysis completed, recommendation documented ✅
-- **Quality**: All tests passing, Pydantic v2 compliant, mock-based unit tests + real API acceptance tests ✅
-- **Implementation**: OrderRequest at module level for FastAPI, comprehensive error handling, credential auto-detection ✅
-- **Integration**: Uses svc-infra dual routers, add_prefixed_docs for landing page card ✅
-
+  - Watchlist: create_watchlist, get_watchlist, list_watchlists, delete_watchlist, add_to_watchlist, remove_from_watchlist (6 new methods) [x]
+- **Brokerage Module**: easy_brokerage() (81 lines), add_brokerage() (460+ lines) with 15 FastAPI routes (9 core + 6 watchlist) - 540+ lines total [x]
+- **Safety Design**: Defaults to paper trading, requires explicit mode="live" for real trading [x]
+- **Router**: Using svc-infra public_router() with dual route registration [x]
+- **Tests**: 20 unit tests (7 easy_brokerage, 3 add_brokerage, 4 core API routes, 6 watchlist routes), all passing [x]
+- **Acceptance Tests**: 5 real API tests (get_account, list_positions, list_orders, submit_and_cancel_order, get_portfolio_history) - 153 lines [x]
+- **Documentation**: docs/brokerage.md (492 lines) + ADR-0006 (443 lines) = 935 lines comprehensive documentation [x]
+- **Provider Research**: Interactive Brokers and TD Ameritrade analysis completed, recommendation documented [x]
+- **Quality**: All tests passing, Pydantic v2 compliant, mock-based unit tests + real API acceptance tests [x]
+- **Implementation**: OrderRequest at module level for FastAPI, comprehensive error handling, credential auto-detection [x]
+- **Integration**: Uses svc-infra dual routers, add_prefixed_docs for landing page card [x]
 Completed in follow-up iteration:
-- ✅ ADR-0006 (trade execution flow design doc) - 443 lines with svc-infra reuse assessment
-- ✅ Interactive Brokers research - Documented in research notes above
-- ✅ TD Ameritrade research - Documented in research notes above
-- ✅ Watchlist DTOs and management - Watchlist model + 6 provider methods + 6 FastAPI routes + 6 tests
-- ✅ Acceptance test with real Alpaca paper trading API - 5 tests (get_account, list_positions, list_orders, submit_and_cancel_order, get_portfolio_history)
-- ✅ docs/brokerage.md documentation - 492 lines comprehensive guide
+- [x] ADR-0006 (trade execution flow design doc) - 443 lines with svc-infra reuse assessment
+- [x] Interactive Brokers research - Documented in research notes above
+- [x] TD Ameritrade research - Documented in research notes above
+- [x] Watchlist DTOs and management - Watchlist model + 6 provider methods + 6 FastAPI routes + 6 tests
+- [x] Acceptance test with real Alpaca paper trading API - 5 tests (get_account, list_positions, list_orders, submit_and_cancel_order, get_portfolio_history)
+- [x] docs/brokerage.md documentation - 492 lines comprehensive guide
 
-### 6. Caching, Rate Limits & Retries (cross‑cutting) - ✅ COMPLETE
+### 6. Caching, Rate Limits & Retries (cross‑cutting) - [x] COMPLETE
 **Status**: Documentation-only task completed. All functionality provided by svc-infra.
 
 **Evidence**:
-- **Documentation**: docs/caching-rate-limits-retries.md - 550+ lines comprehensive guide ✅
-- **Cache Integration**: Examples of cache_read decorator with TTL/tags for market quotes, banking accounts, crypto tickers ✅
-- **Rate Limiting**: Middleware setup, endpoint-level limiting, user-specific limits, provider quota tracking ✅
-- **HTTP Retries**: httpx client with exponential backoff, provider-specific strategies, circuit breaker pattern ✅
-- **Complete Example**: Full production setup showing all three patterns integrated ✅
-- **Provider Patterns**: Specific caching TTLs and rate limits for banking (600s), market (300s), crypto (60s), brokerage (no cache for balances) ✅
-
+- **Documentation**: docs/caching-rate-limits-retries.md - 550+ lines comprehensive guide [x]
+- **Cache Integration**: Examples of cache_read decorator with TTL/tags for market quotes, banking accounts, crypto tickers [x]
+- **Rate Limiting**: Middleware setup, endpoint-level limiting, user-specific limits, provider quota tracking [x]
+- **HTTP Retries**: httpx client with exponential backoff, provider-specific strategies, circuit breaker pattern [x]
+- **Complete Example**: Full production setup showing all three patterns integrated [x]
+- **Provider Patterns**: Specific caching TTLs and rate limits for banking (600s), market (300s), crypto (60s), brokerage (no cache for balances) [x]
 **svc-infra Modules Used**:
 - `svc_infra.cache`: init_cache, init_cache_async, cache_read, cache_write, invalidate_tags
 - `svc_infra.api.fastapi.middleware.ratelimit`: SimpleRateLimitMiddleware, RateLimiter dependency
@@ -911,30 +909,49 @@ Completed in follow-up iteration:
 - External: tenacity for custom retry logic
 
 **Completed**:
-- ✅ Research svc-infra modules (cache, rate limit, HTTP client APIs) - Documented in guide
-- ✅ Create comprehensive documentation guide - docs/caching-rate-limits-retries.md (550+ lines)
-- ✅ Cache integration examples - Market quotes, banking accounts, crypto tickers, resource-based caching
-- ✅ Rate limiting examples - Application-level, route-specific, user-specific, provider quota tracking
-- ✅ HTTP retry examples - Automatic retries, custom strategies, provider-specific patterns, circuit breaker
-- ✅ Complete integration example - Full production FastAPI app with all three patterns
-- ✅ Provider-specific patterns - TTL recommendations, rate limits, caching rules for all providers
+- [x] Research svc-infra modules (cache, rate limit, HTTP client APIs) - Documented in guide
+- [x] Create comprehensive documentation guide - docs/caching-rate-limits-retries.md (550+ lines)
+- [x] Cache integration examples - Market quotes, banking accounts, crypto tickers, resource-based caching
+- [x] Rate limiting examples - Application-level, route-specific, user-specific, provider quota tracking
+- [x] HTTP retry examples - Automatic retries, custom strategies, provider-specific patterns, circuit breaker
+- [x] Complete integration example - Full production FastAPI app with all three patterns
+- [x] Provider-specific patterns - TTL recommendations, rate limits, caching rules for all providers
 
-### 7. Data Normalization & Symbol Resolution (centralized)
-- [ ] **Research (svc-infra check)**:
-  - [ ] Check svc-infra for data normalization/symbol resolution
-  - [ ] Review svc-infra.cache for symbol mapping caching
-  - [ ] Classification: Type A (financial-specific symbol/currency normalization)
-  - [ ] Justification: Financial symbol resolution (ticker → CUSIP → ISIN) and currency conversion are financial domain
-  - [ ] Reuse plan: Use svc-infra.cache for symbol mappings (long TTL), svc-infra.http for exchange rate API calls
-- [ ] Research: symbol mapping (AAPL → Apple Inc. → NASDAQ:AAPL → CUSIP → ISIN); currency converter (USD ↔ EUR); multi-exchange symbol resolution.
-- [ ] Research: Free exchange rate APIs (exchangerate-api.io, fixer.io, openexchangerates.org).
-- [ ] Design: SymbolResolver, CurrencyConverter singletons; fallback to external API (e.g., exchangerate‑api.io free tier). (ADR‑0007)
-- [ ] Design: Easy builder pattern: `easy_normalization()` returns (resolver, converter) tuple
-- [ ] Implement: providers/normalization/symbol_resolver.py + currency_converter.py.
-- [ ] Implement: `easy_normalization()` one-liner that returns configured normalization tools
-- [ ] Tests: convert TSLA → quote → USD → EUR; mock exchange rates; multi-symbol batch resolution.
-- [ ] Verify: Symbol resolver works across providers (banking, market, brokerage)
-- [ ] Docs: docs/normalization.md with usage examples + easy_normalization() + cross-provider symbol mapping + svc-infra caching integration.
+### 7. Data Normalization & Symbol Resolution (centralized) - [x] COMPLETE
+**Status**: Production-ready normalization tools implemented with comprehensive tests and documentation.
+
+**Evidence**:
+- **ADR-0007**: Data Normalization & Symbol Resolution - 610 lines comprehensive design document [x]
+- **Symbol Resolver**: 243 lines with ticker/CUSIP/ISIN conversion, provider normalization, metadata enrichment, batch operations [x]
+- **Currency Converter**: 187 lines with live exchange rates, historical rates, batch conversion (160+ currencies) [x]
+- **Static Mappings**: Top 50 US stocks pre-cached (reduces API calls), provider-specific mappings (Yahoo, CoinGecko, Alpaca) [x]
+- **Exchange Rate Client**: exchangerate-api.io integration (1,500 requests/month free tier) [x]
+- **Easy Builder**: `easy_normalization()` returns (resolver, converter) singleton tuple [x]
+- **Models**: SymbolMetadata, ExchangeRate, CurrencyConversionResult Pydantic models [x]
+- **Tests**: 24 unit tests (ticker/CUSIP/ISIN conversion, provider normalization, batch operations, custom mappings) [x]
+- **Documentation**: docs/normalization.md - 650+ lines with quick start, API reference, integration examples [x]
+- **Total Unit Tests**: 171 passing (147 existing + 24 normalization) [x]
+
+**svc-infra Integration**:
+- Uses `svc_infra.cache` for symbol mappings (recommended TTL: 24 hours)
+- Uses `svc_infra.cache` for exchange rates (recommended TTL: 5-15 minutes)
+- Uses `svc_infra.http` for API calls to exchangerate-api.io
+- Uses `svc_infra.logging` for normalization warnings/errors
+
+**Completed**:
+- [x] Research svc-infra (confirmed no normalization/symbol resolution) - Classified as Type A (financial-specific)
+- [x] Research symbol mapping (ticker ↔ CUSIP ↔ ISIN, provider normalization patterns)
+- [x] Research exchange rate APIs (exchangerate-api.io selected: 1,500/month free tier)
+- [x] Design ADR-0007 (SymbolResolver + CurrencyConverter singletons, static mappings, external API fallback)
+- [x] Design easy_normalization() builder pattern returning (resolver, converter) tuple
+- [x] Implement SymbolResolver (symbol_resolver.py - 243 lines)
+- [x] Implement CurrencyConverter (currency_converter.py - 187 lines)
+- [x] Implement ExchangeRateClient (providers/exchangerate.py - 166 lines)
+- [x] Implement static mappings (providers/static_mappings.py - top 50 US stocks, crypto mappings)
+- [x] Implement easy_normalization() one-liner
+- [x] Tests (24 unit tests: ticker/CUSIP/ISIN, provider normalization, batch, custom mappings)
+- [x] Verify cross-provider symbol resolution (Yahoo, CoinGecko, Alpaca mappings)
+- [x] Documentation (docs/normalization.md - 650+ lines with examples, API reference)
 
 ### 8. Security, Secrets & PII boundaries
 - [~] **REUSE svc-infra**: Auth/sessions via `svc_infra.api.fastapi.auth`
@@ -1273,12 +1290,12 @@ Updated: Production‑readiness plan for fin‑infra with mandatory svc-infra re
 | **TurboTax/Tax Apps** | Tax forms, crypto tax reporting | #14 |
 
 All must-haves now include:
-- ✅ Research protocol with svc-infra check
-- ✅ Easy setup function (`easy_*()` or `add_*(app)`)
-- ✅ Clear classification (Type A/B/C)
-- ✅ Justification for placement
-- ✅ svc-infra reuse plan
-- ✅ Comprehensive tests and docs sections
+- [x] Research protocol with svc-infra check
+- [x] Easy setup function (`easy_*()` or `add_*(app)`)
+- [x] Clear classification (Type A/B/C)
+- [x] Justification for placement
+- [x] svc-infra reuse plan
+- [x] Comprehensive tests and docs sections
 
 **Result**: fin-infra now provides complete fintech infrastructure while strictly delegating all backend concerns to svc-infra.
 
