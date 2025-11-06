@@ -1318,16 +1318,32 @@ Completed in follow-up iteration:
   - [x] Update ADR-0012 with v2 implementation notes - **COMPLETE** (Added v2 deliverables section with all modules documented)
 
 ### 14. Tax Data Integration (default: TaxBit for crypto, IRS for forms)
-- [ ] **Research (svc-infra check)**:
-  - [ ] Check svc-infra for tax document management/storage
-  - [ ] Review svc-infra.data for document lifecycle management
-  - [ ] Classification: Type A (financial-specific tax data APIs)
-  - [ ] Justification: Tax form retrieval (1099s, W-2s) and crypto tax reporting are financial domain
-  - [ ] Reuse plan: Use svc-infra.data for document storage/lifecycle, svc-infra.jobs for annual tax form pulls
-- [ ] Research: TaxBit API (crypto tax reporting), IRS e-Services (transcript retrieval), 1099/W-2 formats.
-- [ ] Research: Document parsing libraries for PDF tax forms (pdfplumber, PyPDF2).
-- [ ] Design: TaxDocument, TaxForm1099, TaxFormW2, CryptoTaxReport DTOs; tax provider interface. (ADR-0013)
-- [ ] Design: Easy builder signature: `easy_tax(provider="taxbit", **config)` with env auto-detection
+- [x] **Research (svc-infra check)**:
+  - [x] Check svc-infra for tax document management/storage - **COMPLETE** (No document storage; only data lifecycle APIs)
+  - [x] Review svc-infra.data for document lifecycle management - **COMPLETE** (Found: retention.py, erasure.py, fixtures.py, backup.py - metadata lifecycle only, not file storage)
+  - [x] Classification: Type A (financial-specific tax data APIs)
+  - [x] Justification: Tax form retrieval (1099s, W-2s) and crypto tax reporting are financial domain-specific; svc-infra provides retention/erasure for metadata only
+  - [x] Reuse plan: Use svc-infra.data (RetentionPolicy, ErasurePlan) for tax document metadata lifecycle (7-year retention per IRS), svc-infra.jobs for annual tax form pulls, svc-infra.db for storing document references (URLs/paths), fin-infra implements PDF parsing and provider integrations (TaxBit, IRS)
+- [x] Research: TaxBit API (crypto tax reporting), IRS e-Services (transcript retrieval), 1099/W-2 formats. - **COMPLETE** (docs/research/tax-providers.md - 450+ lines comprehensive research)
+  - **TaxBit**: $50-$200/month + $1-$5/user for crypto tax (Form 8949, 1099-B, 1099-MISC); OAuth 2.0, 100 req/min; industry standard
+  - **IRS e-Services**: FREE but 6-8 weeks registration (EFIN, PKI certs, IP whitelist); W-2/1099 transcripts via XML; requires taxpayer consent
+  - **Recommended**: IRS for traditional forms (free, official), TaxBit for crypto (if budget allows), Plaid fallback (W-2 only, $0.04/verification)
+  - **Tax Forms**: W-2 (wages), 1099-INT (interest), 1099-DIV (dividends), 1099-B (capital gains), 1099-MISC (staking/airdrops) - all PDF with standardized IRS layouts
+- [x] Research: Document parsing libraries for PDF tax forms (pdfplumber, PyPDF2). - **COMPLETE** (docs/research/tax-providers.md)
+  - **pdfplumber** (RECOMMENDED): 5.9k stars, Apache 2.0, excellent table extraction (tax forms are tables), coordinate-based field extraction, OCR support for scanned forms
+  - **PyPDF2**: 7.8k stars, BSD, fast but poor table extraction (unsuitable for W-2/1099 parsing)
+  - **Decision**: Use pdfplumber for W-2/1099 parsing (table-based layout), pytesseract for OCR (scanned forms), reportlab for PDF generation (mock data)
+- [x] Design: TaxDocument, TaxForm1099, TaxFormW2, CryptoTaxReport DTOs; tax provider interface. (ADR-0013) - **COMPLETE** (docs/adr/0013-tax-integration.md - 650+ lines)
+  - **TaxProvider ABC**: get_tax_documents(), get_tax_document(), download_document(), calculate_crypto_gains(), calculate_tax_liability()
+  - **Data Models**: TaxDocument (base), TaxFormW2 (20 boxes), TaxForm1099INT (interest), TaxForm1099DIV (dividends), TaxForm1099B (capital gains), TaxForm1099MISC (staking/airdrops), CryptoTaxReport (gains summary), TaxLiability (tax calculation)
+  - **Providers**: IRS e-Services (v2, free but 6-8 weeks registration), TaxBit (v2, $50-$200/month + per-user), MockTaxProvider (v1)
+  - **PDF Parsing**: pdfplumber-based parsers (W2Parser, 1099Parser) with coordinate-based box extraction
+  - **svc-infra Integration**: RetentionPolicy (7 years per IRS), ErasurePlan (GDPR after 7 years), cache_read (1h TTL), user_router (auth), add_prefixed_docs (landing page card)
+- [x] Design: Easy builder signature: `easy_tax(provider="taxbit", **config)` with env auto-detection - **COMPLETE** (documented in ADR-0013)
+  - Signature: `easy_tax(provider: str = "mock", **config) -> TaxProvider`
+  - Providers: "irs" (IRS e-Services), "taxbit" (crypto tax), "mock" (default for testing)
+  - Env vars: IRS_EFIN, IRS_TCC, IRS_CERT_PATH, IRS_KEY_PATH, IRS_BASE_URL (IRS); TAXBIT_CLIENT_ID, TAXBIT_CLIENT_SECRET, TAXBIT_BASE_URL (TaxBit)
+  - Auto-detection: Credentials from environment → real provider; no credentials → mock provider
 - [ ] Implement: providers/tax/taxbit.py (crypto gains/losses); providers/tax/irs.py (transcript retrieval).
 - [ ] Implement: tax/parsers/ for PDF form extraction (1099-INT, 1099-DIV, 1099-B, W-2).
 - [ ] Implement: `easy_tax()` one-liner that returns configured TaxProvider

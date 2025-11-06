@@ -31,7 +31,6 @@ from svc_infra.api.fastapi.docs.scoped import add_prefixed_docs
 from svc_infra.cache import resource
 from svc_infra.webhooks import add_webhooks
 
-from fin_infra.credit import easy_credit
 from fin_infra.providers.base import CreditProvider
 from fin_infra.models.credit import CreditScore, CreditReport
 
@@ -95,6 +94,8 @@ def add_credit(
     """
     # Get or create provider
     if provider is None:
+        # Import here to avoid circular import
+        from fin_infra.credit import easy_credit
         provider = easy_credit()
     
     # Store provider on app state for programmatic access
