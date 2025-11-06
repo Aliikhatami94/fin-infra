@@ -27,6 +27,7 @@ class Settings(BaseSettings):
     # Identity / Credit (placeholders)
     stripe_secret_key: str | None = Field(default=None, alias="STRIPE_SECRET_KEY")
     experian_api_key: str | None = Field(default=None, alias="EXPERIAN_API_KEY")
+    experian_environment: str = Field(default="sandbox", alias="EXPERIAN_ENVIRONMENT")
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 

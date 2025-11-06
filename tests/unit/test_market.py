@@ -313,3 +313,192 @@ class TestYahooFinanceMarketData:
         candles = provider.history("INVALID")
         
         assert candles == []
+
+
+class TestAddMarketData:
+    """Test the add_market_data() FastAPI integration."""
+    
+    @pytest.fixture
+    def app_with_market(self):
+        """Create FastAPI app with mocked market data provider."""
+        from fastapi import FastAPI
+        from fin_infra.markets import add_market_data
+        from fin_infra.providers.base import MarketDataProvider
+        
+        app = FastAPI()
+        
+        # Create mock provider (subclass to pass isinstance checks)
+        class MockMarketProvider(MarketDataProvider):
+            def quote(self, symbol: str):
+                pass
+            
+            def history(self, symbol: str, **kwargs):
+                pass
+        
+        mock_provider = Mock(spec=MockMarketProvider)
+        
+        mock_provider.quote.return_value = Quote(
+            symbol="AAPL",
+            price=Decimal("150.25"),
+            as_of=datetime(2025, 1, 15, 12, 30, 0),
+            currency="USD"
+        )
+        mock_provider.history.return_value = [
+            Candle(
+                ts=int(datetime(2025, 1, 15).timestamp() * 1000),  # epoch millis
+                open=Decimal("148.00"),
+                high=Decimal("152.50"),
+                low=Decimal("147.50"),
+                close=Decimal("150.25"),
+                volume=Decimal("50000000")
+            ),
+            Candle(
+                ts=int(datetime(2025, 1, 14).timestamp() * 1000),  # epoch millis
+                open=Decimal("145.00"),
+                high=Decimal("149.00"),
+                low=Decimal("144.50"),
+                close=Decimal("148.00"),
+                volume=Decimal("45000000")
+            )
+        ]
+        # search is optional (provider-specific), so add it with configure_mock
+        mock_provider.configure_mock(search=Mock(return_value=[
+            {"symbol": "AAPL", "name": "Apple Inc.", "region": "United States"}
+        ]))
+        
+        # Add market data with mocked provider
+        add_market_data(app, provider=mock_provider)
+        
+        return app, mock_provider
+    
+    def test_routes_mounted(self, app_with_market):
+        """Should mount all market data routes."""
+        from fastapi.testclient import TestClient
+        
+        app, _ = app_with_market
+        client = TestClient(app)
+        
+        # All routes should exist (not 404)
+        response = client.get("/market/quote/AAPL")
+        assert response.status_code != 404
+        
+        response = client.get("/market/history/AAPL")
+        assert response.status_code != 404
+        
+        response = client.get("/market/search?keywords=Apple")
+        assert response.status_code != 404
+    
+    def test_get_quote_endpoint(self, app_with_market):
+        """Should get quote for a symbol."""
+        from fastapi.testclient import TestClient
+        
+        app, mock_provider = app_with_market
+        client = TestClient(app)
+        
+        response = client.get("/market/quote/AAPL")
+        
+        assert response.status_code == 200
+        data = response.json()
+        assert data["symbol"] == "AAPL"
+        assert data["price"] == 150.25  # Decimal serializes to float in JSON
+        assert data["currency"] == "USD"
+        mock_provider.quote.assert_called_once_with("AAPL")
+    
+    def test_get_history_endpoint(self, app_with_market):
+        """Should get historical candles for a symbol."""
+        from fastapi.testclient import TestClient
+        
+        app, mock_provider = app_with_market
+        client = TestClient(app)
+        
+        response = client.get("/market/history/AAPL?period=1mo&interval=1d")
+        
+        assert response.status_code == 200
+        data = response.json()
+        assert "candles" in data
+        assert len(data["candles"]) == 2
+        assert data["candles"][0]["close"] == 150.25  # Decimal serializes to float in JSON
+        mock_provider.history.assert_called_once_with("AAPL", period="1mo", interval="1d")
+    
+    def test_get_history_default_params(self, app_with_market):
+        """Should use default period and interval."""
+        from fastapi.testclient import TestClient
+        
+        app, mock_provider = app_with_market
+        client = TestClient(app)
+        
+        response = client.get("/market/history/AAPL")
+        
+        assert response.status_code == 200
+        mock_provider.history.assert_called_once_with("AAPL", period="1mo", interval="1d")
+    
+    def test_search_symbols_endpoint(self, app_with_market):
+        """Should search for symbols."""
+        from fastapi.testclient import TestClient
+        
+        app, mock_provider = app_with_market
+        client = TestClient(app)
+        
+        response = client.get("/market/search?keywords=Apple")
+        
+        assert response.status_code == 200
+        data = response.json()
+        assert "results" in data
+        assert len(data["results"]) == 1
+        assert data["results"][0]["symbol"] == "AAPL"
+        mock_provider.search.assert_called_once_with("Apple")
+    
+    def test_search_missing_keywords(self, app_with_market):
+        """Should require keywords parameter."""
+        from fastapi.testclient import TestClient
+        
+        app, mock_provider = app_with_market
+        client = TestClient(app)
+        
+        response = client.get("/market/search")
+        
+        assert response.status_code == 422  # FastAPI validation error
+    
+    def test_quote_provider_error(self, app_with_market):
+        """Should return 400 when provider raises error."""
+        from fastapi.testclient import TestClient
+        
+        app, mock_provider = app_with_market
+        client = TestClient(app)
+        
+        mock_provider.quote.side_effect = Exception("Symbol not found")
+        
+        response = client.get("/market/quote/INVALID")
+        
+        assert response.status_code == 400
+        assert "Symbol not found" in response.json()["detail"]
+    
+    def test_custom_prefix(self):
+        """Should support custom prefix."""
+        from fastapi import FastAPI
+        from fastapi.testclient import TestClient
+        from fin_infra.markets import add_market_data
+        from fin_infra.providers.base import MarketDataProvider
+        
+        # Create mock provider (subclass to pass isinstance checks)
+        class MockMarketProvider(MarketDataProvider):
+            def quote(self, symbol: str):
+                pass
+            
+            def history(self, symbol: str, **kwargs):
+                pass
+        
+        app = FastAPI()
+        mock_provider = Mock(spec=MockMarketProvider)
+        mock_provider.quote.return_value = Quote(
+            symbol="AAPL",
+            price=Decimal("150.25"),
+            as_of=datetime(2025, 1, 15, 12, 30, 0),
+            currency="USD"
+        )
+        
+        add_market_data(app, provider=mock_provider, prefix="/api/v1/market")
+        client = TestClient(app)
+        
+        response = client.get("/api/v1/market/quote/AAPL")
+        assert response.status_code == 200
