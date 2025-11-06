@@ -31,6 +31,7 @@ Alpha. Core functionality is stable, but the surface is intentionally small whil
 | Brokerage | Trading accounts and portfolio data | [Brokerage](src/fin_infra/docs/brokerage.md) |
 | Tax Data | Tax documents and data management | [Tax](src/fin_infra/docs/tax.md) |
 | Cashflows | NPV, IRR, loan calculations | [Cashflows](src/fin_infra/docs/cashflows.md) |
+| Observability | Metrics and route classification for financial endpoints | [Observability](src/fin_infra/docs/observability.md) |
 | Contributing | Dev setup and quality gates | [Contributing](src/fin_infra/docs/contributing.md) |
 | Acceptance | Acceptance testing guide | [Acceptance](src/fin_infra/docs/acceptance.md) |
 
@@ -83,6 +84,64 @@ net_value = npv(0.08, cashflows)
 rate_of_return = irr(cashflows)
 ```
 
+### With FastAPI (fin-infra + svc-infra)
+
+```python
+from fastapi import FastAPI
+from svc_infra.obs import add_observability
+from fin_infra.obs import financial_route_classifier
+from fin_infra.banking import add_banking
+from fin_infra.markets import add_market_data
+
+# Create app with backend framework (svc-infra)
+app = FastAPI(title="Fintech API")
+
+# Add financial capabilities (fin-infra)
+add_banking(app, provider="plaid")
+add_market_data(app, provider="alphavantage")
+
+# Option 1: Basic observability (all routes auto-instrumented)
+add_observability(app)
+
+# Option 2: With route classification (recommended for production)
+# All routes auto-instrumented + categorized for filtering in Grafana
+add_observability(app, route_classifier=financial_route_classifier)
+```
+
+**What gets instrumented?**
+
+Both options automatically instrument **ALL routes** in your app:
+- ✅ Financial routes: `/banking/*`, `/market/*`, `/crypto/*`
+- ✅ Non-financial routes: `/health`, `/docs`, `/admin/*`
+
+**The difference:** Route classification adds category labels (`|financial`, `|public`) for filtering metrics in Grafana.
+
+**Without classifier:**
+```promql
+# Metrics: route="/banking/accounts"
+http_server_requests_total{route="/banking/accounts", method="GET"} 42
+```
+
+**With classifier:**
+```promql
+# Metrics: route="/banking/accounts|financial" (can filter by |financial)
+http_server_requests_total{route="/banking/accounts|financial", method="GET"} 42
+
+# Filter all financial routes in Grafana:
+sum(rate(http_server_requests_total{route=~".*\\|financial"}[5m]))
+```
+
+See [Observability Guide](src/fin_infra/docs/observability.md) for more details.
+
+## Architecture Overview
+add_market_data(app, provider="alphavantage")
+
+# Now routes are automatically classified:
+# GET /banking/accounts → route_class="financial" in metrics
+# GET /market/quote/AAPL → route_class="financial" in metrics
+# GET /health → route_class="public" in metrics
+```
+
 ## Architecture Overview
 
 ```
@@ -96,6 +155,7 @@ fin-infra/
 │   ├── markets/            # Market data (stocks/crypto)
 │   ├── tax/                # Tax data and documents
 │   ├── cashflows/          # Financial calculations
+│   ├── obs/                # Observability (route classification)
 │   ├── models/             # Pydantic data models
 │   ├── providers/          # Provider implementations
 │   └── docs/               # Packaged documentation
