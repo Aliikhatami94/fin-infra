@@ -954,26 +954,37 @@ Completed in follow-up iteration:
 - [x] Documentation (docs/normalization.md - 650+ lines with examples, API reference)
 
 ### 8. Security, Secrets & PII boundaries
-- [~] **REUSE svc-infra**: Auth/sessions via `svc_infra.api.fastapi.auth`
-- [~] **REUSE svc-infra**: Security middleware via `svc_infra.security`
-- [~] **REUSE svc-infra**: Logging via `svc_infra.logging.setup_logging`
-- [~] **REUSE svc-infra**: Secrets management via `svc_infra` settings patterns
-- [ ] **Research (svc-infra check)**:
-  - [ ] Review svc-infra.security for PII masking and encryption
-  - [ ] Check svc-infra.auth for OAuth token storage patterns
-  - [ ] Classification: Type B (financial-specific PII + generic secret management)
-  - [ ] Justification: Base security from svc-infra; financial PII (SSN, account numbers, routing numbers) patterns are domain-specific
-  - [ ] Reuse plan: Use svc-infra for base security; extend with financial PII detection and provider token encryption
-- [ ] Research: Document PII handling specific to financial providers (SSN, account numbers, routing numbers, card numbers)
-- [ ] Research: Provider token encryption requirements (at rest, in transit)
-- [ ] Design: PII encryption boundaries for provider tokens (store in svc-infra DB with encryption); financial PII log filters (ADR-0008)
-- [ ] Design: Easy builder pattern: `add_financial_security(app)` configures financial PII filters and token encryption (wraps svc-infra)
-- [ ] Implement: Financial PII masking patterns for logs (extends svc-infra logging)
-- [ ] Implement: Provider token encryption layer (uses svc-infra DB and security modules)
-- [ ] Implement: `add_financial_security(app)` one-liner that configures financial security extensions
-- [ ] Tests: Verify no financial PII in logs (SSN, account numbers); provider token encryption/decryption
-- [ ] Verify: Works with svc-infra auth, security, and logging modules
-- [ ] Docs: Security guide showing svc-infra integration for auth + fin-infra provider security + easy setup
+- [x] **REUSE svc-infra**: Auth/sessions via `svc_infra.api.fastapi.auth`
+- [x] **REUSE svc-infra**: Security middleware via `svc_infra.security`
+- [x] **REUSE svc-infra**: Logging via `svc_infra.logging.setup_logging`
+- [x] **REUSE svc-infra**: Secrets management via `svc_infra` settings patterns
+- [x] **Research (svc-infra check)**:
+  - [x] Review svc-infra.security for PII masking and encryption
+  - [x] Check svc-infra.auth for OAuth token storage patterns
+  - [x] Classification: Type B (financial-specific PII + generic secret management)
+  - [x] Justification: Base security from svc-infra; financial PII (SSN, account numbers, routing numbers) patterns are domain-specific
+  - [x] Reuse plan: Use svc-infra for base security; extend with financial PII detection and provider token encryption
+- [x] Research: Document PII handling specific to financial providers (SSN, account numbers, routing numbers, card numbers)
+- [x] Research: Provider token encryption requirements (at rest, in transit)
+- [x] Design: PII encryption boundaries for provider tokens (store in svc-infra DB with encryption); financial PII log filters (ADR-0008)
+- [x] Design: Easy builder pattern: `add_financial_security(app)` configures financial PII filters and token encryption (wraps svc-infra)
+- [x] Implement: Financial PII masking patterns for logs (extends svc-infra logging)
+- [x] Implement: Provider token encryption layer (uses svc-infra DB and security modules)
+- [x] Implement: `add_financial_security(app)` one-liner that configures financial security extensions
+- [x] Tests: Verify no financial PII in logs (SSN, account numbers); provider token encryption/decryption
+- [x] Verify: Works with svc-infra auth, security, and logging modules
+- [x] Docs: Security guide showing svc-infra integration for auth + fin-infra provider security + easy setup
+
+**Section 8 Evidence**:
+- ✅ **ADR-0008**: Financial Security & PII (880 lines) - Type B classification, PII masking patterns, token encryption architecture
+- ✅ **PII Masking**: FinancialPIIFilter (226 lines) - Automatic SSN/account/card/CVV masking in logs with context validation
+- ✅ **PII Patterns**: pii_patterns.py (112 lines) - Regex patterns + Luhn checksum + ABA routing validation
+- ✅ **Token Encryption**: encryption.py (164 lines) - Fernet (AES-128-CBC) with context binding and key rotation
+- ✅ **Token Storage**: token_store.py (182 lines) - Database operations for encrypted tokens with expiration
+- ✅ **Audit Logging**: audit.py (95 lines) - PII access tracking for compliance (SOC 2, GDPR, GLBA)
+- ✅ **Easy Setup**: add.py (80 lines) - `add_financial_security(app)` one-liner configuration
+- ✅ **Tests**: 29 new unit tests (200 total) - PII masking, token encryption, audit logging, FastAPI integration
+- ✅ **Documentation**: security.md (680+ lines) - Comprehensive guide with PCI-DSS/SOC 2/GDPR compliance reference, integration examples, best practices
 
 ### 9. Observability & SLOs
 - [~] **REUSE svc-infra**: Prometheus metrics via `svc_infra.obs.add_observability`
