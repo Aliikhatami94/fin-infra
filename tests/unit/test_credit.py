@@ -2,11 +2,12 @@
 
 Tests:
 - Credit data models (CreditScore, CreditReport, CreditAccount, CreditInquiry)
-- ExperianProvider (mock implementation)
+- MockExperianProvider (v1 mock implementation)
+- ExperianProvider (v2 real API - requires credentials)
 - easy_credit() builder
 - add_credit_monitoring() FastAPI integration
 
-Note: v1 uses mock data only; real Experian API integration deferred to v2.
+Note: v1 uses mock data only; real Experian API integration is v2.
 """
 
 from datetime import date
@@ -16,7 +17,7 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from fin_infra.credit import ExperianProvider, easy_credit
+from fin_infra.credit import MockExperianProvider, easy_credit
 from fin_infra.credit.add import add_credit_monitoring
 from fin_infra.models.credit import (
     CreditAccount,
@@ -158,18 +159,18 @@ class TestCreditModels:
         assert report.score.score == 735
 
 
-class TestExperianProvider:
-    """Test ExperianProvider (mock implementation)."""
+class TestMockExperianProvider:
+    """Test MockExperianProvider (v1 mock implementation)."""
 
     def test_provider_initialization(self):
         """Test provider initialization with config."""
-        provider = ExperianProvider(api_key="test_key", environment="sandbox")
+        provider = MockExperianProvider(api_key="test_key", environment="sandbox")
         assert provider.api_key == "test_key"
         assert provider.environment == "sandbox"
 
     def test_get_credit_score(self):
         """Test get_credit_score returns mock data."""
-        provider = ExperianProvider()
+        provider = MockExperianProvider()
         score = provider.get_credit_score("user123")
 
         assert isinstance(score, CreditScore)
@@ -183,7 +184,7 @@ class TestExperianProvider:
 
     def test_get_credit_report(self):
         """Test get_credit_report returns mock data."""
-        provider = ExperianProvider()
+        provider = MockExperianProvider()
         report = provider.get_credit_report("user123")
 
         assert isinstance(report, CreditReport)
@@ -207,7 +208,7 @@ class TestExperianProvider:
 
     def test_subscribe_to_changes(self):
         """Test subscribe_to_changes returns mock subscription ID."""
-        provider = ExperianProvider()
+        provider = MockExperianProvider()
         sub_id = provider.subscribe_to_changes("user123", "https://example.com/webhook")
 
         assert sub_id == "sub_mock_user123"
@@ -217,25 +218,30 @@ class TestEasyCredit:
     """Test easy_credit() builder."""
 
     def test_easy_credit_default(self):
-        """Test easy_credit with default provider (experian)."""
+        """Test easy_credit with default provider (auto-detects mock without credentials)."""
         credit = easy_credit()
-        assert isinstance(credit, ExperianProvider)
+        assert isinstance(credit, MockExperianProvider)
 
     def test_easy_credit_explicit_provider(self):
-        """Test easy_credit with explicit provider name."""
+        """Test easy_credit with explicit provider name (uses mock without credentials)."""
         credit = easy_credit(provider="experian")
-        assert isinstance(credit, ExperianProvider)
+        assert isinstance(credit, MockExperianProvider)
 
     def test_easy_credit_with_config(self):
-        """Test easy_credit with explicit config."""
+        """Test easy_credit with explicit config (uses mock when credentials incomplete)."""
         credit = easy_credit(provider="experian", api_key="test_key", environment="production")
-        assert isinstance(credit, ExperianProvider)
+        assert isinstance(credit, MockExperianProvider)
         assert credit.api_key == "test_key"
         assert credit.environment == "production"
 
+    def test_easy_credit_force_mock(self):
+        """Test easy_credit with use_mock=True forces mock provider."""
+        credit = easy_credit(provider="experian", use_mock=True)
+        assert isinstance(credit, MockExperianProvider)
+
     def test_easy_credit_with_instance(self):
         """Test easy_credit with CreditProvider instance."""
-        provider = ExperianProvider(api_key="test_key")
+        provider = MockExperianProvider(api_key="test_key")
         credit = easy_credit(provider=provider)
         assert credit is provider
 
@@ -259,11 +265,11 @@ class TestAddCreditMonitoring:
     """Test add_credit_monitoring() FastAPI integration."""
 
     def test_add_credit_monitoring(self):
-        """Test add_credit_monitoring wires routes to app."""
+        """Test add_credit_monitoring wires routes to app (uses mock without credentials)."""
         app = FastAPI()
         credit = add_credit_monitoring(app)
 
-        assert isinstance(credit, ExperianProvider)
+        assert isinstance(credit, MockExperianProvider)
         assert hasattr(app.state, "credit_provider")
         assert app.state.credit_provider is credit
 
