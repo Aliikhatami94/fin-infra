@@ -35,7 +35,6 @@ class CurrencyConverter:
             api_key: Optional API key for exchangerate-api.io (paid tier)
         """
         self._client = ExchangeRateClient(api_key=api_key)
-        self._cache: dict[str, dict[str, float]] = {}  # base -> {target: rate}
 
     async def convert(
         self,

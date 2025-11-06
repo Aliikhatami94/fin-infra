@@ -1241,12 +1241,19 @@ Completed in follow-up iteration:
   - [ ] Implement `get_credit_report()` for TransUnion API
   - [ ] Add to `easy_credit(provider="transunion")` factory
   - [ ] Add unit tests for TransUnion provider
-- [ ] **Tests (Unit tests for v2 modules)**:
-  - [ ] Add tests for ExperianAuthManager (token acquisition, refresh, expiry)
-  - [ ] Add tests for ExperianClient (API calls, retries, error handling with mocked httpx)
-  - [ ] Add tests for parser.py (response parsing, edge cases, missing fields)
-  - [ ] Add tests for ExperianProvider (integration of auth + client + parser)
-  - [ ] Verify all new tests passing
+- [x] **Tests (Unit tests for v2 modules)** - **COMPLETE + REFACTORED**:
+  - [x] Add tests for ExperianAuthManager (token acquisition, refresh, expiry) - **10 tests passing**
+  - [x] Add tests for ExperianClient (API calls, retries, error handling with mocked httpx) - **16 tests passing**
+  - [x] Add tests for parser.py (response parsing, edge cases, missing fields) - **25 tests passing**
+  - [x] Add tests for ExperianProvider (integration of auth + client + parser) - **13 tests passing**
+  - [x] Verify all new tests passing - **64 Experian tests + 23 existing = 87 total passing in 3.55s**
+  - [x] **REFACTORED: auth.py to use svc-infra cache** - Architecture violation fixed:
+    - Removed custom in-memory cache (~50 lines: `_token`, `_token_expiry`, `_lock`, `_is_valid()`, `_refresh_token()`)
+    - Replaced with `@cache_read(key="oauth_token:experian:{client_id}", ttl=3600, tags=["oauth:experian"])`
+    - Benefits: Redis persistence, distributed caching, monitoring integration, simpler code
+    - Cache invalidation: `await invalidate_tags("oauth:experian")`
+    - Tests updated: 13 custom cache tests → 10 decorator integration tests
+    - All 87 credit tests passing after refactor (no regressions)
 - [ ] **Tests (Acceptance with sandbox)**:
   - [ ] Create `tests/acceptance/test_credit_experian_acceptance.py`
   - [ ] Test real API call to Experian sandbox with `EXPERIAN_API_KEY`

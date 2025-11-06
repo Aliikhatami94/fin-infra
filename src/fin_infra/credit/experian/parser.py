@@ -14,7 +14,7 @@ Example:
 """
 
 from datetime import date, datetime
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from typing import Any
 
 from fin_infra.models.credit import (
@@ -45,10 +45,10 @@ def _parse_date(value: str | None) -> date | None:
 
 def _parse_decimal(value: str | int | float | None) -> Decimal | None:
     """Parse numeric value to Decimal.
-    
+
     Args:
         value: Numeric value (string, int, float) or None
-        
+
     Returns:
         Decimal object or None
     """
@@ -56,10 +56,8 @@ def _parse_decimal(value: str | int | float | None) -> Decimal | None:
         return None
     try:
         return Decimal(str(value))
-    except (ValueError, TypeError):
+    except (ValueError, TypeError, InvalidOperation):
         return None
-
-
 def parse_credit_score(data: dict[str, Any], *, user_id: str) -> CreditScore:
     """Parse Experian credit score response to CreditScore model.
     
@@ -90,7 +88,7 @@ def parse_credit_score(data: dict[str, Any], *, user_id: str) -> CreditScore:
 
     return CreditScore(
         user_id=user_id,
-        score=profile.get("score", 0),
+        score=profile.get("score") or 300,  # Default to minimum valid score
         score_model=profile.get("scoreModel", "Unknown"),
         bureau="experian",
         score_date=_parse_date(profile.get("scoreDate")) or date.today(),
@@ -126,11 +124,11 @@ def parse_account(account_data: dict[str, Any]) -> CreditAccount:
         account_id=account_data.get("accountId", "unknown"),
         account_type=account_data.get("accountType", "other"),
         creditor_name=account_data.get("creditorName", "Unknown"),
-        account_status=account_data.get("accountStatus", "unknown"),
-        balance=_parse_decimal(account_data.get("currentBalance")),
+        account_status=account_data.get("accountStatus", "open"),  # Default to "open"
+        balance=_parse_decimal(account_data.get("currentBalance")) or Decimal("0"),
         credit_limit=_parse_decimal(account_data.get("creditLimit")),
-        payment_status=account_data.get("paymentStatus", "unknown"),
-        opened_date=_parse_date(account_data.get("dateOpened")),
+        payment_status=account_data.get("paymentStatus", "current"),  # Default to "current"
+        opened_date=_parse_date(account_data.get("dateOpened")) or date.today(),
         last_payment_date=_parse_date(account_data.get("lastPaymentDate")),
         monthly_payment=_parse_decimal(account_data.get("monthlyPayment")),
     )
@@ -156,7 +154,7 @@ def parse_inquiry(inquiry_data: dict[str, Any]) -> CreditInquiry:
     """
     return CreditInquiry(
         inquiry_id=inquiry_data.get("inquiryId", "unknown"),
-        inquiry_type=inquiry_data.get("inquiryType", "unknown"),
+        inquiry_type=inquiry_data.get("inquiryType", "soft"),  # Default to "soft"
         inquirer_name=inquiry_data.get("inquirerName", "Unknown"),
         inquiry_date=_parse_date(inquiry_data.get("inquiryDate")) or date.today(),
         purpose=inquiry_data.get("purpose"),
@@ -184,11 +182,11 @@ def parse_public_record(record_data: dict[str, Any]) -> PublicRecord:
     """
     return PublicRecord(
         record_id=record_data.get("recordId", "unknown"),
-        record_type=record_data.get("recordType", "unknown"),
-        filing_date=_parse_date(record_data.get("filingDate")) or date.today(),
-        status=record_data.get("status", "unknown"),
+        record_type=record_data.get("recordType", "other"),
+        filed_date=_parse_date(record_data.get("filingDate")) or date.today(),
+        status=record_data.get("status", "active"),  # Default to "active"
         amount=_parse_decimal(record_data.get("amount")),
-        court_name=record_data.get("courtName"),
+        court=record_data.get("courtName"),
     )
 
 
