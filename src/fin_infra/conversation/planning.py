@@ -8,9 +8,13 @@ Provides conversational interface for financial Q&A:
 - Multi-turn context (remembers last 10 exchanges)
 - Safety filters (refuses sensitive questions like SSN, passwords)
 - Personalized advice (uses current net worth, goals, historical data)
-- Follow-up suggestions (proactive guidance)
+- Natural dialogue (flexible responses, not forced JSON structure)
 
-Uses ai-infra CoreLLM with structured output (Pydantic schemas).
+**Design Choice**: Uses `CoreLLM.achat()` for natural conversation (NOT `with_structured_output()`).
+Conversation should be flexible and natural, not rigidly structured. Other modules (insights, 
+categorization, goals) correctly use structured output because they need predictable schemas.
+
+Uses ai-infra CoreLLM for natural conversation.
 Caches conversation context for 24h (target: $0.018/user/month cost).
 
 Example:
@@ -317,15 +321,25 @@ class FinancialPlanningConversation:
         # Build messages with conversation history
         messages = self._build_messages(context, question)
         
-        # Call LLM with structured output
-        structured = self.llm.with_structured_output(
+        # Call LLM for natural conversation (NO structured output)
+        # NOTE: Conversation should be flexible, not rigidly structured
+        # We want natural dialogue, not forced JSON every time
+        response_text = await self.llm.achat(
+            user_msg=messages[-1]["content"],  # Last message is user question
+            system=messages[0]["content"],  # First message is system prompt
             provider=self.provider,
             model_name=self.model_name,
-            schema=ConversationResponse,
-            method="json_mode",
+            # NO output_schema - natural conversation
         )
         
-        response: ConversationResponse = await structured.ainvoke(messages)
+        # Parse response into ConversationResponse for internal use
+        # (but LLM doesn't need to know about this structure)
+        response = ConversationResponse(
+            answer=response_text if isinstance(response_text, str) else str(response_text),
+            follow_up_questions=[],  # TODO: Extract from response if formatted
+            confidence=0.85,  # Default confidence for natural responses
+            sources=self._extract_sources_from_context(context)
+        )
         
         # Update context with new exchange
         context.previous_exchanges.append(Exchange(
@@ -450,6 +464,25 @@ class FinancialPlanningConversation:
             {"role": "system", "content": system_message},
             {"role": "user", "content": question}
         ]
+    
+    def _extract_sources_from_context(self, context: ConversationContext) -> list[str]:
+        """
+        Extract data sources from conversation context.
+        
+        Args:
+            context: Current conversation context
+        
+        Returns:
+            List of data sources used (e.g., ["current_net_worth", "goals"])
+        """
+        sources = []
+        if context.current_net_worth and context.current_net_worth > 0:
+            sources.append("current_net_worth")
+        if context.goals:
+            sources.extend([f"goal_{g.get('type', 'unknown')}" for g in context.goals[:3]])
+        if context.previous_exchanges:
+            sources.append("conversation_history")
+        return sources if sources else ["user_context"]
     
     async def clear_session(self, user_id: str, session_id: str):
         """

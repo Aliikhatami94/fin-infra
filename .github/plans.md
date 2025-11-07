@@ -2266,7 +2266,7 @@ Completed in follow-up iteration:
   - [x] Comprehensive docstrings with examples, cost estimates, usage patterns
   - **REFACTORED**: Moved from `src/fin_infra/net_worth/conversation.py` to `src/fin_infra/conversation/` (root-level domain)
     - Rationale: Conversation is GENERAL (not net-worth-specific) - works across all fin-infra domains
-    - Files created: `conversation/planning.py` (~464 lines), `conversation/__init__.py`, `conversation/ease.py`
+    - Files created: `conversation/planning.py` (~496 lines), `conversation/__init__.py`, `conversation/ease.py`
     - Import updated in `net_worth/ease.py`: `from fin_infra.conversation import FinancialPlanningConversation`
     - ADR-0021 updated to document scope boundary (root-level vs domain-specific)
     - **AUDIT COMPLETE** (2025-11-07): Verified NO duplication, all chat/conversation AI capabilities centralized in `conversation/`
@@ -2274,7 +2274,13 @@ Completed in follow-up iteration:
       - Confirmed: Other LLM usage (categorization, insights, normalization) is single-shot inference, NOT conversation
       - Confirmed: All modules correctly reuse `ai-infra.llm.CoreLLM` (zero LLM infrastructure duplication)
       - Decision tree documented for future LLM feature development
-  - File: src/fin_infra/conversation/planning.py (~464 lines)
+    - **API PATTERN FIX** (2025-11-07): Changed from `with_structured_output()` to `achat()` for natural conversation
+      - Rationale: Conversation should be FLEXIBLE, not rigidly structured (unlike insights/categorization/goals)
+      - Pattern doc: `src/fin_infra/docs/research/llm-api-patterns.md` (~400 lines)
+      - Decision matrix: when to use structured output vs natural dialogue
+      - Conversation now uses `llm.achat()` without `output_schema` for natural responses
+      - Other modules correctly use `achat(output_schema=...)` or `with_structured_output()` for single-shot inference
+  - File: src/fin_infra/conversation/planning.py (~496 lines)
 - [x] Implement: net_worth/goals.py (LLM-validated goal tracking) - **COMPLETE**
   - [x] FinancialGoalTracker class with CoreLLM validation + local math
   - [x] 2 Pydantic schemas: GoalValidation, GoalProgressReport
@@ -2307,6 +2313,7 @@ Completed in follow-up iteration:
   - [ ] test_debt_reduction_plan(): $5k credit card (22% APR) prioritized over student loans (4%)
   - [ ] test_goal_validation(): Retirement goal → required_savings $1,500/month
   - [ ] test_conversation(): Multi-turn Q&A with context from previous exchanges
+  - [ ] **test_conversation_api_pattern()**: Verify conversation uses `achat()` WITHOUT `output_schema` (natural dialogue, not forced JSON)
   - [ ] test_goal_tracking(): Progress report shows 80% on-track
   - [ ] test_llm_fallback(): LLM disabled → endpoints return 503 or disable gracefully
 - [x] Tests: Acceptance tests (real LLM API calls, marked @pytest.mark.acceptance)
