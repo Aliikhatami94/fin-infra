@@ -2755,3 +2755,779 @@ All must-haves now include:
 - [ ] Phase 4 (with Sections 13-17): Add credit, tax, categorization, etc.
 - [ ] Phase 5 (final): Complete documentation, testing, verification
 
+---
+
+## Section 27: Web Application API Coverage (Priority: Critical)
+
+**Context**: fin-infra is a **generic fintech package** designed to serve ANY team building fintech applications (personal finance, wealth management, banking, budgeting, investment tracking, tax planning, etc.). This section expands fin-infra to provide comprehensive API coverage for typical fintech web applications, using fin-infra-web as a **reference implementation** (not the only use case).
+
+**Goal**: Ensure fin-infra provides all necessary financial primitives and APIs that teams commonly need when building fintech applications, while keeping the package generic and reusable for diverse use cases beyond personal finance.
+
+**Reference Analysis**: See `src/fin_infra/docs/fin-infra-web-api-coverage-analysis.md` for detailed gap analysis comparing fin-infra capabilities against a comprehensive personal finance dashboard (fin-infra-web). Current overall coverage: ~50%.
+
+### Research: Identify Generic Fintech API Requirements
+
+**Objective**: Catalog common API requirements across fintech application types, prioritizing features with broad applicability across multiple use cases.
+
+- [ ] **Budget Management APIs** (broad applicability)
+  - Research: Check if budget tracking exists in svc-infra or needs fin-infra implementation
+  - Classification: Type A (financial-specific) - budget CRUD, spending tracking, overspending detection
+  - Use cases: Personal finance apps, expense management, small business accounting
+  - Justification: Every fintech app with transactions needs budget tracking
+  - Reuse plan: Use svc-infra for DB (SQL CRUD), auth (user budgets), caching (budget queries)
+  - Generic design: Budget templates adaptable for personal, household, business, or project budgets
+
+- [ ] **Cash Flow Analysis APIs** (broad applicability)
+  - Research: Check if income/expense analysis exists or needs new analytics module
+  - Classification: Type A (financial-specific) - cash flow calculations, income vs expenses, forecasting
+  - Use cases: Personal finance, business cash flow, investment planning, retirement projections
+  - Justification: Core financial primitive for understanding money movement
+  - Reuse plan: Use svc-infra for aggregation queries, caching (expensive calculations)
+  - Generic design: Configurable time periods, multiple account types, customizable income/expense categories
+
+- [ ] **Savings Rate Calculation APIs** (moderate applicability)
+  - Research: Check if savings tracking exists in net worth or needs analytics module
+  - Classification: Type A (financial-specific) - savings rate over time, trends, benchmarking
+  - Use cases: Personal finance, retirement planning, financial goal tracking
+  - Justification: Key financial health metric for wealth-building apps
+  - Reuse plan: Use svc-infra caching for historical calculations
+  - Generic design: Support multiple savings definitions (gross, net, discretionary)
+
+- [ ] **Goal Management APIs** (broad applicability - EXPAND EXISTING)
+  - Research: net_worth/goals.py has validation + stub progress endpoint; needs full CRUD
+  - Classification: Type A (financial-specific) - goal CRUD, progress tracking, recommendations
+  - Use cases: Personal finance goals, business savings targets, investment milestones, debt payoff
+  - Justification: Universal primitive across all fintech apps (personal, business, investment)
+  - Reuse plan: Use svc-infra for DB (goal storage), jobs (progress updates), webhooks (milestone notifications)
+  - Generic design: Goal types (savings, debt, investment, net worth, custom), flexible timelines, multiple funding sources
+
+- [ ] **Portfolio Analytics APIs** (moderate applicability - EXPAND EXISTING)
+  - Research: Brokerage has basic portfolio; needs analytics (YTD/MTD returns, allocation, benchmarking)
+  - Classification: Type A (financial-specific) - return calculations, asset allocation, performance comparison
+  - Use cases: Investment platforms, robo-advisors, wealth management, portfolio trackers
+  - Justification: Essential for any app with investment accounts
+  - Reuse plan: Use svc-infra caching (expensive calculations), jobs (daily portfolio snapshots)
+  - Generic design: Multi-account portfolios, customizable asset classes, configurable benchmarks
+
+- [ ] **Transaction Search/Filtering APIs** (broad applicability - ENHANCE EXISTING)
+  - Research: banking/transactions exists but lacks query params (merchant, category, amount range)
+  - Classification: Type A (financial-specific) - transaction search, filtering, sorting, pagination
+  - Use cases: ALL fintech apps with transactions (personal finance, banking, expense management)
+  - Justification: Core functionality for transaction-based apps
+  - Reuse plan: Use svc-infra for DB queries (SQL filtering), caching (common queries)
+  - Generic design: Flexible filters (date, amount, merchant, category, account, tags, notes)
+
+- [ ] **Account Balance History APIs** (broad applicability)
+  - Research: Banking has current balances; needs historical snapshots
+  - Classification: Type A (financial-specific) - balance tracking over time, trends, projections
+  - Use cases: Personal finance, banking apps, net worth tracking, cash flow analysis
+  - Justification: Essential for understanding account trends and projections
+  - Reuse plan: Use svc-infra jobs (daily snapshots), DB (time-series data), caching
+  - Generic design: Configurable snapshot frequency, multiple account types, date range queries
+
+- [ ] **Spending Insights APIs** (broad applicability)
+  - Research: categorization/stats exists; needs spending analysis (top merchants, trends, anomalies)
+  - Classification: Type A (financial-specific) - spending patterns, top merchants, category trends
+  - Use cases: Personal finance, expense management, business accounting, fraud detection
+  - Justification: High-value insights for transaction-based apps
+  - Reuse plan: Use svc-infra caching (insight queries), ai-infra LLM (anomaly detection)
+  - Generic design: Configurable time periods, customizable categories, anomaly thresholds
+
+- [ ] **Recurring Transaction Summary APIs** (moderate applicability - ENHANCE EXISTING)
+  - Research: recurring/detect exists; needs summary endpoint (aggregated subscriptions, total cost)
+  - Classification: Type A (financial-specific) - subscription tracking, recurring income/expenses summary
+  - Use cases: Personal finance, subscription management, business expense tracking
+  - Justification: Valuable for budget planning and expense reduction
+  - Reuse plan: Use svc-infra caching (recurring detection results), jobs (periodic detection)
+  - Generic design: Separate income vs expenses, customizable frequency detection
+
+- [ ] **Document Management APIs** (moderate applicability)
+  - Research: tax/documents exists for W-2/1099; needs generic document upload/storage/OCR
+  - Classification: Type C (hybrid) - document storage (svc-infra), OCR/analysis (fin-infra)
+  - Use cases: Tax apps, banking (statements), investment (trade confirmations), insurance (policies)
+  - Justification: Common need for financial document storage and analysis
+  - Reuse plan: Use svc-infra for file storage, auth (user documents), webhooks (document processed)
+  - Generic design: Document types (tax, statement, receipt, confirmation, policy), OCR extraction, AI analysis
+
+- [ ] **Tax-Loss Harvesting APIs** (niche applicability)
+  - Research: Tax module exists; needs TLH opportunity detection and scenario analysis
+  - Classification: Type A (financial-specific) - TLH logic, tax optimization, scenario modeling
+  - Use cases: Investment platforms, wealth management, robo-advisors, tax planning apps
+  - Justification: High-value feature for investment-focused apps
+  - Reuse plan: Use svc-infra caching (position analysis), ai-infra LLM (optimization recommendations)
+  - Generic design: Customizable wash sale rules, multiple tax scenarios, what-if modeling
+
+- [ ] **Growth Projections APIs** (moderate applicability)
+  - Research: goals.py has basic projection logic; needs comprehensive forecasting
+  - Classification: Type A (financial-specific) - net worth forecasting, compound interest, retirement projections
+  - Use cases: Personal finance, retirement planning, investment apps, financial planning
+  - Justification: Valuable for goal-oriented and retirement-focused apps
+  - Reuse plan: Use svc-infra caching (projection results), jobs (periodic recalculation)
+  - Generic design: Multiple growth scenarios, configurable assumptions, sensitivity analysis
+
+- [ ] **Rebalancing Engine APIs** (niche applicability)
+  - Research: Portfolio analytics needed first; then add rebalancing logic
+  - Classification: Type A (financial-specific) - portfolio rebalancing, target allocation, trade suggestions
+  - Use cases: Robo-advisors, wealth management platforms, DIY investment apps
+  - Justification: Essential for portfolio management apps
+  - Reuse plan: Use svc-infra caching (rebalancing calculations), ai-infra LLM (recommendations)
+  - Generic design: Target allocation strategies (age-based, risk-based, custom), tax-aware rebalancing
+
+- [ ] **Unified Insights Feed APIs** (broad applicability - EXPAND EXISTING)
+  - Research: net_worth/insights exists (4 types); needs unified feed aggregating all insight types
+  - Classification: Type A (financial-specific) - insights aggregation, prioritization, personalization
+  - Use cases: ALL fintech apps with AI features (personal finance, investment, banking, tax)
+  - Justification: Central feature for AI-powered fintech apps
+  - Reuse plan: Use svc-infra caching (insight results), ai-infra LLM (generation), jobs (periodic generation)
+  - Generic design: Insight categories (spending, investment, goals, alerts, tax, debt), priority levels, read/unread state
+
+- [ ] **Crypto Portfolio Analytics** (niche applicability - ENHANCE EXISTING)
+  - Research: crypto/portfolio exists; needs AI insights, portfolio analytics
+  - Classification: Type A (financial-specific) - crypto insights, allocation analysis, tax implications
+  - Use cases: Crypto platforms, multi-asset investment apps, tax planning
+  - Justification: Growing need for crypto-specific analytics
+  - Reuse plan: Use svc-infra caching (crypto data), ai-infra LLM (insights), tax module (gains)
+  - Generic design: Multi-exchange support, cross-chain analytics, fiat conversion
+
+**Research Deliverable**: For each API above, document:
+1. **Exists in svc-infra?** (search svc-infra codebase)
+2. **Exists in fin-infra?** (check existing modules)
+3. **Classification**: Type A (fin-infra), Type B (svc-infra), Type C (hybrid)
+4. **Generic applicability**: Broad (many app types), Moderate (some app types), Niche (specific app types)
+5. **Implementation location**: New module, expand existing, or reuse svc-infra
+6. **Generic design notes**: How to keep it reusable across different fintech app types
+
+### Design: Generic API Architecture
+
+**Objective**: Design modular, reusable API structure that serves diverse fintech applications while maintaining clear separation of concerns.
+
+- [ ] **Create ADR-0022: Generic Fintech API Design Principles**
+  - Document design philosophy: generic > application-specific
+  - Flexibility patterns: configurable categories, customizable time periods, multi-entity support
+  - Extension points: custom fields, webhooks, plugin architecture
+  - Example: Budget API supports personal, household, business, project budgets with same primitives
+
+- [ ] **Define New Analytics Module** (`src/fin_infra/analytics/`)
+  - Purpose: Consolidate all calculation/analysis endpoints (cash flow, savings, spending, portfolio, growth)
+  - Rationale: Keeps financial calculations separate from data providers
+  - Structure:
+    ```
+    src/fin_infra/analytics/
+      __init__.py           # Public API
+      ease.py               # easy_analytics() builder
+      add.py                # add_analytics() FastAPI helper
+      cash_flow.py          # Income vs expenses analysis
+      savings.py            # Savings rate calculations
+      spending.py           # Spending insights and patterns
+      portfolio.py          # Portfolio analytics (returns, allocation, benchmarking)
+      projections.py        # Growth projections and forecasting
+      models.py             # Pydantic models (CashFlowAnalysis, SpendingInsight, etc.)
+      tests/
+    ```
+  - Generic design: All analytics accept flexible filters (time period, accounts, categories, custom tags)
+
+- [ ] **Define New Budgets Module** (`src/fin_infra/budgets/`)
+  - Purpose: Budget management (CRUD, tracking, alerts)
+  - Structure:
+    ```
+    src/fin_infra/budgets/
+      __init__.py           # Public API
+      ease.py               # easy_budgets() builder
+      add.py                # add_budgets() FastAPI helper
+      tracker.py            # Budget tracking logic
+      alerts.py             # Overspending detection
+      templates.py          # Pre-built budget templates (personal, business, household)
+      models.py             # Pydantic models (Budget, BudgetProgress, etc.)
+      tests/
+    ```
+  - Generic design: Budget types (personal, household, business, project), flexible categories, rollover logic
+
+- [ ] **Define New Documents Module** (`src/fin_infra/documents/`)
+  - Purpose: Generic document management with OCR and AI analysis
+  - Structure:
+    ```
+    src/fin_infra/documents/
+      __init__.py           # Public API
+      ease.py               # easy_documents() builder
+      add.py                # add_documents() FastAPI helper
+      storage.py            # Document upload/download (uses svc-infra file storage)
+      ocr.py                # OCR extraction (optional providers: Textract, Tesseract)
+      analysis.py           # AI document analysis (uses ai-infra LLM)
+      models.py             # Pydantic models (Document, DocumentType, OCRResult, etc.)
+      tests/
+    ```
+  - Generic design: Document types extensible (tax, statement, receipt, contract, policy), metadata tagging
+
+- [ ] **Expand Goals Module** (`src/fin_infra/net_worth/goals.py` → `src/fin_infra/goals/`)
+  - Move goal management out of net_worth to standalone module
+  - Add full CRUD (create, read, update, delete)
+  - Complete stub progress endpoint implementation
+  - Add milestone tracking, funding allocation, goal templates
+  - Generic design: Goal types (savings, debt, investment, net worth, income, custom), flexible timelines
+
+- [ ] **Expand Tax Module** (`src/fin_infra/tax/`) with TLH
+  - Add `tlh.py` for tax-loss harvesting logic
+  - Add `optimization.py` for tax scenario modeling
+  - Generic design: Configurable tax rules (US federal, state, international), wash sale logic
+
+- [ ] **Enhance Existing Modules with Generic Filters**
+  - **Banking**: Add query params to `GET /transactions` (merchant, category, amount range, date range, tags)
+  - **Brokerage**: Separate portfolio analytics from basic account/position endpoints
+  - **Categorization**: Enhance stats endpoint with spending totals per category
+  - **Recurring**: Add summary endpoint aggregating all subscriptions with total cost
+  - **Net Worth**: Add unified insights feed aggregating all insight types
+
+- [ ] **API Endpoint Design Standards** (apply to ALL new endpoints)
+  - Use svc-infra dual routers (public_router, user_router) - MANDATORY
+  - RESTful conventions: GET (read), POST (create), PATCH (update), DELETE (delete)
+  - Pagination: `?page=1&per_page=20` for list endpoints
+  - Filtering: Query params for common filters (date_range, account_id, category, etc.)
+  - Sorting: `?sort_by=date&order=desc`
+  - Response format: Consistent envelope `{data: [...], meta: {total, page, per_page}}`
+  - Error handling: Use svc-infra standard error responses (401, 403, 422, 500)
+  - Caching: Use svc-infra cache decorators for expensive queries
+  - Auth: Use svc-infra auth dependencies (RequireUser, RequireService)
+  - OpenAPI: Descriptive tags, examples, security annotations
+
+**Design Deliverable**: For each new module:
+1. **ADR document** (if significant architectural decision)
+2. **Module structure** (files, classes, functions)
+3. **API endpoints** (routes, methods, request/response models)
+4. **Generic design patterns** (how it serves multiple app types)
+5. **Integration points** (svc-infra modules used, ai-infra features)
+6. **Example use cases** (personal finance, wealth management, business accounting, etc.)
+
+### Implementation: Phase 1 - Core Analytics & Budget Management
+
+**Priority**: HIGH - These features block basic fintech app functionality
+
+#### 27.1: Analytics Module Foundation
+
+- [ ] **Create analytics module structure**
+  - [ ] `src/fin_infra/analytics/__init__.py` with public exports
+  - [ ] `src/fin_infra/analytics/models.py` with Pydantic models:
+    - `CashFlowAnalysis` (income_total, expense_total, net_cash_flow, income_by_source, expenses_by_category)
+    - `SavingsRateData` (savings_rate, savings_amount, income, expenses, period)
+    - `SpendingInsight` (top_merchants, category_breakdown, spending_trends, anomalies)
+    - `PortfolioMetrics` (total_value, total_return, ytd_return, mtd_return, day_change, allocation_by_asset_class)
+    - `BenchmarkComparison` (portfolio_return, benchmark_return, benchmark_symbol, alpha, beta)
+    - `GrowthProjection` (projected_values, assumptions, scenarios, confidence_intervals)
+
+- [ ] **Implement cash flow analysis** (`src/fin_infra/analytics/cash_flow.py`)
+  - [ ] `calculate_cash_flow(user_id, start_date, end_date, accounts=None)` function
+    - Aggregate transactions from banking module
+    - Separate income (positive) vs expenses (negative)
+    - Group income by source (paycheck, investment income, side hustle, other)
+    - Group expenses by category (using categorization module)
+    - Calculate net cash flow
+    - Support account filtering (all accounts, specific accounts, account groups)
+  - [ ] `forecast_cash_flow(user_id, months=6, assumptions={})` function
+    - Use recurring detection for predictable income/expenses
+    - Apply growth rates from assumptions
+    - Generate monthly projections
+  - [ ] Unit tests with mock transactions
+  - [ ] Integration tests with real banking/categorization modules
+
+- [ ] **Implement savings rate calculation** (`src/fin_infra/analytics/savings.py`)
+  - [ ] `calculate_savings_rate(user_id, period="monthly", definition="net")` function
+    - Support multiple periods (weekly, monthly, quarterly, yearly)
+    - Support multiple definitions:
+      - `gross`: (Income - Expenses) / Income
+      - `net`: (Income - Taxes - Expenses) / (Income - Taxes)
+      - `discretionary`: (Income - Fixed Expenses) / Income
+    - Track over time (historical savings rates)
+    - Calculate trends (improving, declining, stable)
+  - [ ] Unit tests with various scenarios
+  - [ ] Integration tests with cash flow module
+
+- [ ] **Implement spending insights** (`src/fin_infra/analytics/spending.py`)
+  - [ ] `analyze_spending(user_id, period="30d", categories=None)` function
+    - Top merchants by total spending
+    - Category breakdown with spending totals and percentages
+    - Spending trends (increasing, decreasing, stable)
+    - Anomaly detection (unusually large transactions, new merchants)
+    - Month-over-month comparisons
+  - [ ] Optional: Use ai-infra LLM for personalized spending insights
+  - [ ] Unit tests with various spending patterns
+  - [ ] Integration tests with categorization module
+
+- [ ] **Implement portfolio analytics** (`src/fin_infra/analytics/portfolio.py`)
+  - [ ] `calculate_portfolio_metrics(user_id, accounts=None)` function
+    - Total portfolio value across all brokerage accounts
+    - Total return (dollar amount and percentage)
+    - YTD, MTD, 1Y, 3Y, 5Y returns
+    - Day change (dollar and percentage)
+    - Asset allocation by asset class (stocks, bonds, cash, crypto, real estate, other)
+  - [ ] `compare_to_benchmark(user_id, benchmark="SPY", period="1y")` function
+    - Portfolio return vs benchmark return
+    - Calculate alpha (excess return) and beta (volatility)
+    - Sharpe ratio (risk-adjusted return)
+  - [ ] Unit tests with mock portfolio data
+  - [ ] Integration tests with brokerage module
+
+- [ ] **Implement growth projections** (`src/fin_infra/analytics/projections.py`)
+  - [ ] `project_net_worth(user_id, years=30, assumptions={})` function
+    - Project net worth growth based on:
+      - Current net worth (from net_worth module)
+      - Monthly contributions (from cash flow analysis)
+      - Expected return rates (from assumptions)
+      - Inflation adjustments
+    - Generate multiple scenarios (conservative, moderate, aggressive)
+    - Calculate confidence intervals
+  - [ ] `calculate_compound_interest(principal, rate, periods, contribution=0)` helper
+  - [ ] Unit tests with various projection scenarios
+  - [ ] Integration tests with net worth module
+
+- [ ] **Create easy_analytics() builder** (`src/fin_infra/analytics/ease.py`)
+  - [ ] `easy_analytics()` function returning `AnalyticsEngine` instance
+  - [ ] Configure caching (use svc-infra cache for expensive calculations)
+  - [ ] Configure dependencies (banking, brokerage, categorization, recurring, net_worth modules)
+  - [ ] Sensible defaults (30-day periods, net savings definition, SPY benchmark)
+
+- [ ] **Create add_analytics() FastAPI helper** (`src/fin_infra/analytics/add.py`)
+  - [ ] Mount analytics endpoints:
+    - `GET /analytics/cash-flow?user_id=...&start_date=...&end_date=...` → CashFlowAnalysis
+    - `GET /analytics/savings-rate?user_id=...&period=monthly` → SavingsRateData
+    - `GET /analytics/spending-insights?user_id=...&period=30d` → SpendingInsight
+    - `GET /analytics/portfolio?user_id=...&accounts=...` → PortfolioMetrics
+    - `GET /analytics/performance?user_id=...&benchmark=SPY&period=1y` → BenchmarkComparison
+    - `POST /analytics/forecast-net-worth` (body: user_id, years, assumptions) → GrowthProjection
+  - [ ] Use svc-infra user_router for all endpoints (require authentication)
+  - [ ] Apply caching decorators (1h TTL for analytics queries)
+  - [ ] Store analytics engine on `app.state.analytics`
+  - [ ] Return analytics instance for programmatic access
+  - [ ] Call `add_prefixed_docs(app, prefix="/analytics", title="Analytics", ...)` for landing page card
+
+- [ ] **Documentation**
+  - [ ] `src/fin_infra/docs/analytics.md` (comprehensive guide)
+    - What analytics module provides
+    - Quick start examples
+    - API endpoint reference
+    - Configuration options
+    - Use cases (personal finance, investment tracking, cash flow management)
+    - Integration with other modules
+  - [ ] README card for analytics capability
+  - [ ] ADR-0023: Analytics Module Design (generic vs app-specific calculations)
+
+#### 27.2: Budgets Module Implementation
+
+- [ ] **Create budgets module structure**
+  - [ ] `src/fin_infra/budgets/__init__.py` with public exports
+  - [ ] `src/fin_infra/budgets/models.py` with Pydantic models:
+    - `Budget` (id, user_id, name, type, period, categories, start_date, end_date, rollover_enabled)
+    - `BudgetCategory` (category_name, budgeted_amount, spent_amount, remaining_amount, percent_used)
+    - `BudgetProgress` (budget_id, current_period, categories, total_budgeted, total_spent, total_remaining)
+    - `BudgetAlert` (budget_id, category, type, threshold, message, triggered_at)
+    - `BudgetTemplate` (name, type, categories, description) # Pre-built templates
+
+- [ ] **Implement budget tracker** (`src/fin_infra/budgets/tracker.py`)
+  - [ ] `BudgetTracker` class with methods:
+    - `create_budget(user_id, name, type, period, categories)` → Budget
+    - `get_budgets(user_id, type=None)` → List[Budget]
+    - `get_budget(budget_id)` → Budget
+    - `update_budget(budget_id, updates)` → Budget
+    - `delete_budget(budget_id)` → None
+    - `get_budget_progress(budget_id, period="current")` → BudgetProgress
+  - [ ] Support budget types: `personal`, `household`, `business`, `project`, `custom`
+  - [ ] Support periods: `weekly`, `biweekly`, `monthly`, `quarterly`, `yearly`
+  - [ ] Rollover logic: unused budget carries over to next period
+  - [ ] Integration with categorization module (map transactions to budget categories)
+  - [ ] Integration with svc-infra DB (store budgets in SQL)
+
+- [ ] **Implement budget alerts** (`src/fin_infra/budgets/alerts.py`)
+  - [ ] `check_budget_alerts(budget_id)` function
+    - Detect overspending (spent > budgeted)
+    - Detect approaching limit (spent > 80% of budgeted)
+    - Detect unusual spending (spike in category)
+  - [ ] Integration with svc-infra webhooks (send alerts)
+  - [ ] Configurable alert thresholds per category
+
+- [ ] **Implement budget templates** (`src/fin_infra/budgets/templates.py`)
+  - [ ] Pre-built templates:
+    - `50/30/20` (50% needs, 30% wants, 20% savings) for personal finance
+    - `Zero-based` (every dollar allocated) for detailed budgeting
+    - `Envelope system` (cash-like category limits) for spending control
+    - `Business` (common business expense categories) for small business
+    - `Project` (project-specific budget) for project management
+  - [ ] `apply_template(user_id, template_name, total_income)` function
+  - [ ] Customizable templates (users can save custom templates)
+
+- [ ] **Create easy_budgets() builder** (`src/fin_infra/budgets/ease.py`)
+  - [ ] `easy_budgets()` function returning `BudgetTracker` instance
+  - [ ] Configure DB (use svc-infra SQL)
+  - [ ] Configure webhooks (use svc-infra for alerts)
+  - [ ] Default to monthly budgets with rollover enabled
+
+- [ ] **Create add_budgets() FastAPI helper** (`src/fin_infra/budgets/add.py`)
+  - [ ] Mount budget endpoints:
+    - `POST /budgets` (body: name, type, period, categories) → Budget
+    - `GET /budgets?user_id=...&type=...` → List[Budget]
+    - `GET /budgets/{budget_id}` → Budget
+    - `PATCH /budgets/{budget_id}` (body: updates) → Budget
+    - `DELETE /budgets/{budget_id}` → None
+    - `GET /budgets/{budget_id}/progress?period=current` → BudgetProgress
+    - `GET /budgets/templates` → List[BudgetTemplate]
+    - `POST /budgets/from-template` (body: template_name, total_income) → Budget
+  - [ ] Use svc-infra user_router (require authentication)
+  - [ ] Apply caching decorators (budget queries cached for 5 minutes)
+  - [ ] Store budget tracker on `app.state.budgets`
+  - [ ] Call `add_prefixed_docs(app, prefix="/budgets", title="Budget Management", ...)`
+
+- [ ] **Documentation**
+  - [ ] `src/fin_infra/docs/budgets.md` (comprehensive guide)
+  - [ ] README card for budgets capability
+  - [ ] ADR-0024: Budget Management Design (types, rollover, templates)
+
+#### 27.3: Goals Module Enhancement (Expand Existing)
+
+- [ ] **Refactor goals out of net_worth module**
+  - [ ] Create `src/fin_infra/goals/` standalone module
+  - [ ] Move `src/fin_infra/net_worth/goals.py` → `src/fin_infra/goals/management.py`
+  - [ ] Update imports across codebase
+
+- [ ] **Expand goals models** (`src/fin_infra/goals/models.py`)
+  - [ ] Add `GoalType` enum: `savings`, `debt`, `investment`, `net_worth`, `income`, `custom`
+  - [ ] Add `GoalStatus` enum: `active`, `paused`, `completed`, `abandoned`
+  - [ ] Expand `Goal` model:
+    - Add `type` field (GoalType)
+    - Add `status` field (GoalStatus)
+    - Add `milestones` (list of milestone amounts with dates)
+    - Add `funding_sources` (accounts contributing to goal)
+    - Add `auto_contribute` (boolean for automatic transfers)
+    - Add `tags` (custom tags for categorization)
+  - [ ] Add `GoalProgress` model (replace stub implementation)
+    - `goal_id`, `current_amount`, `target_amount`, `percent_complete`
+    - `monthly_contribution_actual`, `monthly_contribution_target`
+    - `projected_completion_date`, `on_track` (boolean)
+    - `milestones_reached` (list of completed milestones)
+
+- [ ] **Implement full goal CRUD** (`src/fin_infra/goals/management.py`)
+  - [ ] `create_goal(user_id, name, type, target, deadline, ...)` → Goal
+  - [ ] `list_goals(user_id, type=None, status=None)` → List[Goal]
+  - [ ] `get_goal(goal_id)` → Goal
+  - [ ] `update_goal(goal_id, updates)` → Goal
+  - [ ] `delete_goal(goal_id)` → None
+  - [ ] Complete `get_goal_progress(goal_id)` (remove 501 stub) → GoalProgress
+    - Calculate current amount from linked accounts
+    - Calculate monthly contributions (actual vs target)
+    - Project completion date based on current pace
+    - Determine if on track
+  - [ ] Integration with net_worth module (link accounts to goals)
+  - [ ] Integration with svc-infra DB (store goals)
+
+- [ ] **Implement milestone tracking** (`src/fin_infra/goals/milestones.py`)
+  - [ ] `add_milestone(goal_id, amount, target_date, description)` → Milestone
+  - [ ] `check_milestones(goal_id)` → List[Milestone] (with reached status)
+  - [ ] Celebration messages when milestones reached
+  - [ ] Integration with svc-infra webhooks (milestone notifications)
+
+- [ ] **Implement funding allocation** (`src/fin_infra/goals/funding.py`)
+  - [ ] `link_account_to_goal(goal_id, account_id, allocation_percent)` → None
+  - [ ] `get_goal_funding_sources(goal_id)` → List[FundingSource]
+  - [ ] Support multiple accounts contributing to one goal
+  - [ ] Support one account contributing to multiple goals (split allocation)
+
+- [ ] **Update add_goals() FastAPI helper** (`src/fin_infra/goals/add.py`)
+  - [ ] Add full CRUD endpoints:
+    - `POST /goals` (body: name, type, target, deadline, ...) → Goal
+    - `GET /goals?user_id=...&type=...&status=...` → List[Goal]
+    - `GET /goals/{goal_id}` → Goal
+    - `PATCH /goals/{goal_id}` (body: updates) → Goal
+    - `DELETE /goals/{goal_id}` → None
+    - `GET /goals/{goal_id}/progress` (complete stub) → GoalProgress
+    - `POST /goals/{goal_id}/milestones` → Milestone
+    - `POST /goals/{goal_id}/funding` (body: account_id, allocation) → None
+  - [ ] Keep existing LLM endpoints:
+    - `POST /goals/validate` (goal validation with ai-infra)
+  - [ ] Use svc-infra user_router
+  - [ ] Call `add_prefixed_docs(app, prefix="/goals", title="Goal Management", ...)`
+
+- [ ] **Documentation**
+  - [ ] Update `src/fin_infra/docs/goals.md` (expand from net-worth section)
+  - [ ] README card for goals capability
+  - [ ] ADR-0025: Goals Module Refactoring (standalone vs net worth)
+
+### Implementation: Phase 2 - Enhanced Features
+
+**Priority**: MEDIUM - Important for complete user experience
+
+#### 27.4: Transaction Filtering Enhancement
+
+- [ ] **Enhance banking transactions endpoint**
+  - [ ] Add query params to `GET /banking/transactions`:
+    - `merchant` (string, partial match)
+    - `category` (string, exact match or comma-separated list)
+    - `min_amount` (float)
+    - `max_amount` (float)
+    - `start_date` (ISO date)
+    - `end_date` (ISO date)
+    - `tags` (comma-separated list)
+    - `account_id` (filter by specific account)
+    - `is_recurring` (boolean)
+    - `sort_by` (date, amount, merchant)
+    - `order` (asc, desc)
+    - `page` (int, default 1)
+    - `per_page` (int, default 50, max 200)
+  - [ ] Response envelope: `{data: [...], meta: {total, page, per_page, total_pages}}`
+  - [ ] Apply svc-infra caching (common query patterns cached)
+  - [ ] Update tests to cover filtering scenarios
+
+#### 27.5: Account Balance History
+
+- [ ] **Implement balance history tracking** (`src/fin_infra/banking/history.py`)
+  - [ ] `BalanceSnapshot` model (account_id, balance, date, source)
+  - [ ] `record_balance_snapshot(account_id, balance, date)` function
+  - [ ] Use svc-infra jobs to record daily snapshots
+  - [ ] Store in svc-infra SQL database
+
+- [ ] **Add balance history endpoint**
+  - [ ] `GET /banking/accounts/{account_id}/history?days=90` → List[BalanceSnapshot]
+  - [ ] Calculate trends (increasing, decreasing, stable)
+  - [ ] Calculate average balance for period
+  - [ ] Cache history queries (24h TTL)
+
+#### 27.6: Recurring Transaction Summary
+
+- [ ] **Implement recurring summary** (`src/fin_infra/recurring/summary.py`)
+  - [ ] `RecurringSummary` model (total_monthly_cost, subscriptions, recurring_income)
+  - [ ] `get_recurring_summary(user_id)` function
+    - Aggregate all detected recurring transactions
+    - Separate subscriptions (expenses) vs recurring income
+    - Calculate total monthly cost
+    - Group by category
+    - Identify cancellation opportunities (unused subscriptions)
+  - [ ] Use svc-infra caching (24h TTL)
+
+- [ ] **Add recurring summary endpoint**
+  - [ ] `GET /recurring/summary?user_id=...` → RecurringSummary
+  - [ ] Update `add_recurring_detection()` to include summary endpoint
+
+#### 27.7: Document Management Module
+
+- [ ] **Create documents module** (`src/fin_infra/documents/`)
+  - [ ] `models.py`: Document, DocumentType, OCRResult, DocumentAnalysis
+  - [ ] `storage.py`: Upload/download using svc-infra file storage
+  - [ ] `ocr.py`: OCR extraction (optional: AWS Textract, Tesseract)
+  - [ ] `analysis.py`: AI document analysis (uses ai-infra LLM)
+  - [ ] `ease.py`: `easy_documents()` builder
+  - [ ] `add.py`: `add_documents(app)` FastAPI helper
+
+- [ ] **Implement document endpoints**
+  - [ ] `POST /documents/upload` (multipart/form-data) → Document
+  - [ ] `GET /documents?user_id=...&type=...&year=...` → List[Document]
+  - [ ] `GET /documents/{document_id}` → Document
+  - [ ] `GET /documents/{document_id}/download` → File
+  - [ ] `DELETE /documents/{document_id}` → None
+  - [ ] `POST /documents/{document_id}/analyze` (AI analysis) → DocumentAnalysis
+  - [ ] Use svc-infra file storage, auth, webhooks (document processed)
+
+- [ ] **Documentation**
+  - [ ] `src/fin_infra/docs/documents.md`
+  - [ ] README card for documents capability
+
+#### 27.8: Tax-Loss Harvesting
+
+- [ ] **Implement TLH logic** (`src/fin_infra/tax/tlh.py`)
+  - [ ] `TLHOpportunity` model (position, loss_amount, replacement_ticker, wash_sale_risk)
+  - [ ] `find_tlh_opportunities(user_id, min_loss=100)` function
+    - Analyze all brokerage positions for unrealized losses
+    - Check wash sale rules (no same security purchase 30 days before/after)
+    - Suggest replacement securities (similar exposure, different ticker)
+    - Calculate potential tax savings
+  - [ ] `simulate_tlh_scenario(opportunities, tax_rate)` function
+  - [ ] Use ai-infra LLM for replacement security suggestions
+
+- [ ] **Add TLH endpoints**
+  - [ ] `GET /tax/tlh-opportunities?user_id=...&min_loss=100` → List[TLHOpportunity]
+  - [ ] `POST /tax/tlh-scenario` (body: opportunities, tax_rate) → TLHScenario
+  - [ ] Update `add_tax_data()` to include TLH endpoints
+
+### Implementation: Phase 3 - Advanced Features
+
+**Priority**: LOW - Nice-to-have enhancements for sophisticated apps
+
+#### 27.9: Rebalancing Engine
+
+- [ ] **Implement rebalancing logic** (`src/fin_infra/analytics/rebalancing.py`)
+  - [ ] `RebalancingPlan` model (trades, target_allocation, tax_impact)
+  - [ ] `generate_rebalancing_plan(user_id, target_allocation)` function
+    - Calculate current allocation vs target
+    - Determine buy/sell trades needed
+    - Minimize tax impact (prefer tax-advantaged accounts, long-term holdings)
+    - Minimize transaction costs
+    - Respect minimum trade sizes
+  - [ ] Use ai-infra LLM for rebalancing recommendations
+
+- [ ] **Add rebalancing endpoint**
+  - [ ] `POST /analytics/rebalancing` (body: user_id, target_allocation) → RebalancingPlan
+
+#### 27.10: Unified Insights Feed
+
+- [ ] **Implement insights aggregator** (`src/fin_infra/insights/aggregator.py`)
+  - [ ] Aggregate insights from all modules:
+    - Net worth insights (wealth_trends, debt_reduction, goal_recommendations, asset_allocation)
+    - Spending insights (top merchants, category trends, anomalies)
+    - Portfolio insights (performance, allocation, rebalancing suggestions)
+    - Tax insights (TLH opportunities, tax liability)
+    - Budget insights (overspending alerts, savings opportunities)
+    - Cash flow insights (income sources, expense reduction)
+  - [ ] `InsightFeed` model (insights, categories, priority, read_status)
+  - [ ] Prioritization logic (critical alerts > recommendations > informational)
+  - [ ] Read/unread tracking
+  - [ ] Use svc-infra caching (insight generation expensive)
+
+- [ ] **Create insights module** (`src/fin_infra/insights/`)
+  - [ ] `aggregator.py`: Aggregate insights from all sources
+  - [ ] `add.py`: `add_insights(app)` FastAPI helper
+  - [ ] Endpoints:
+    - `GET /insights?user_id=...&category=...&unread_only=false` → InsightFeed
+    - `PATCH /insights/{insight_id}/read` → Insight
+    - `DELETE /insights/{insight_id}` (dismiss) → None
+
+#### 27.11: Crypto Insights
+
+- [ ] **Implement crypto insights** (`src/fin_infra/crypto/insights.py`)
+  - [ ] `CryptoInsight` model (insight_type, message, data, recommendations)
+  - [ ] `generate_crypto_insights(user_id)` function
+    - Portfolio allocation analysis
+    - Top performers / worst performers
+    - Tax implications (short-term vs long-term gains)
+    - Diversification recommendations
+    - Market trend analysis
+  - [ ] Use ai-infra LLM for personalized insights
+
+- [ ] **Add crypto insights endpoint**
+  - [ ] `GET /crypto/insights?user_id=...` → List[CryptoInsight]
+  - [ ] Update `add_crypto_data()` to include insights endpoint
+
+### Tests
+
+**Comprehensive testing for all new modules and endpoints**
+
+- [ ] **Analytics Module Tests** (`tests/unit/analytics/`)
+  - [ ] `test_cash_flow.py`: Cash flow calculation scenarios
+  - [ ] `test_savings.py`: Savings rate calculation with different definitions
+  - [ ] `test_spending.py`: Spending insights and anomaly detection
+  - [ ] `test_portfolio.py`: Portfolio metrics and benchmark comparison
+  - [ ] `test_projections.py`: Growth projections with various scenarios
+
+- [ ] **Budgets Module Tests** (`tests/unit/budgets/`)
+  - [ ] `test_tracker.py`: Budget CRUD operations
+  - [ ] `test_alerts.py`: Overspending detection
+  - [ ] `test_templates.py`: Budget template application
+  - [ ] `test_rollover.py`: Rollover logic
+
+- [ ] **Goals Module Tests** (`tests/unit/goals/`)
+  - [ ] `test_management.py`: Goal CRUD operations
+  - [ ] `test_progress.py`: Progress calculation
+  - [ ] `test_milestones.py`: Milestone tracking
+  - [ ] `test_funding.py`: Funding source allocation
+
+- [ ] **Documents Module Tests** (`tests/unit/documents/`)
+  - [ ] `test_storage.py`: Upload/download operations
+  - [ ] `test_ocr.py`: OCR extraction (mocked)
+  - [ ] `test_analysis.py`: AI analysis (mocked)
+
+- [ ] **Integration Tests** (`tests/integration/`)
+  - [ ] `test_analytics_api.py`: Test analytics endpoints with TestClient
+  - [ ] `test_budgets_api.py`: Test budget endpoints with TestClient
+  - [ ] `test_goals_api.py`: Test goal endpoints with TestClient
+  - [ ] `test_documents_api.py`: Test document endpoints with TestClient
+
+- [ ] **Acceptance Tests** (`tests/acceptance/`)
+  - [ ] `test_full_fintech_flow.py`: End-to-end test simulating fintech app usage
+    - Link bank accounts
+    - Fetch transactions
+    - Categorize transactions
+    - Create budget
+    - Analyze cash flow
+    - Create goal
+    - Track progress
+    - Generate insights
+
+### Documentation
+
+**Comprehensive documentation for all new features**
+
+- [ ] **API Documentation** (`src/fin_infra/docs/`)
+  - [ ] `analytics.md`: Analytics module guide (cash flow, savings, spending, portfolio, projections)
+  - [ ] `budgets.md`: Budget management guide (CRUD, tracking, alerts, templates)
+  - [ ] `goals.md`: Goal management guide (CRUD, progress, milestones, funding)
+  - [ ] `documents.md`: Document management guide (upload, OCR, AI analysis)
+  - [ ] `insights.md`: Unified insights feed guide (aggregation, prioritization)
+  - [ ] Update `net-worth.md`: Remove goals section (moved to goals.md)
+
+- [ ] **ADRs** (`src/fin_infra/docs/adr/`)
+  - [ ] `0022-generic-fintech-api-design.md`: Generic vs app-specific design principles
+  - [ ] `0023-analytics-module-design.md`: Analytics calculation patterns
+  - [ ] `0024-budget-management-design.md`: Budget types, rollover, templates
+  - [ ] `0025-goals-module-refactoring.md`: Goals as standalone module
+  - [ ] `0026-web-api-coverage-strategy.md`: Prioritization and phasing approach
+
+- [ ] **README Updates**
+  - [ ] Add capability cards for: Analytics, Budgets, Goals, Documents, Insights
+  - [ ] Update feature checklist with new modules
+  - [ ] Update example usage showing new APIs
+  - [ ] Clarify generic applicability (not just personal finance apps)
+
+- [ ] **copilot-instructions.md Updates**
+  - [ ] Expand "fin-infra scope" with new capabilities
+  - [ ] Add "Example Use Cases" section showing diverse app types
+  - [ ] Clarify generic design philosophy
+  - [ ] Document fin-infra-web as ONE example application
+
+### Verification
+
+**Quality gates before marking section complete**
+
+- [ ] **Code Quality**
+  - [ ] `ruff format` passes for all new code
+  - [ ] `ruff check` passes with no errors
+  - [ ] `mypy src/fin_infra` passes with no type errors
+  - [ ] All functions have type hints and docstrings
+
+- [ ] **Testing**
+  - [ ] All unit tests pass: `pytest tests/unit/`
+  - [ ] All integration tests pass: `pytest tests/integration/`
+  - [ ] All acceptance tests pass: `pytest tests/acceptance/ -m acceptance`
+  - [ ] Test coverage >80% for new modules
+
+- [ ] **API Standards**
+  - [ ] All new endpoints use svc-infra dual routers (grep confirms no `APIRouter()`)
+  - [ ] All endpoints have OpenAPI documentation (visit `/docs`)
+  - [ ] All endpoints have proper authentication (user_router or service_router)
+  - [ ] All endpoints follow RESTful conventions (GET, POST, PATCH, DELETE)
+  - [ ] All endpoints have caching where appropriate
+
+- [ ] **Documentation**
+  - [ ] All new modules have dedicated doc files in `src/fin_infra/docs/`
+  - [ ] README has capability cards for all new features
+  - [ ] ADRs written for significant architectural decisions
+  - [ ] API examples work (copy-paste ready)
+  - [ ] Generic applicability documented (multiple use cases shown)
+
+- [ ] **Integration**
+  - [ ] New modules integrate with svc-infra (DB, cache, auth, jobs, webhooks)
+  - [ ] New modules integrate with ai-infra (LLM insights where applicable)
+  - [ ] New modules integrate with existing fin-infra modules (banking, brokerage, etc.)
+  - [ ] `add_prefixed_docs()` called for all new capabilities (landing page cards)
+
+### Success Criteria
+
+- [ ] **API Coverage**: fin-infra provides ≥90% of common fintech API requirements (up from ~50%)
+- [ ] **Generic Design**: All new features serve multiple application types (personal finance, wealth management, banking, etc.)
+- [ ] **Reusability**: Other teams can use fin-infra for their fintech apps without fin-infra-web
+- [ ] **Documentation**: Comprehensive docs show how to use fin-infra for various fintech app types
+- [ ] **Example Integration**: fin-infra-web successfully uses all new APIs (replace mock data with real API calls)
+- [ ] **Quality**: All tests pass, code quality checks pass, no regressions in existing features
+
+**Branch**: `feat/web-api-coverage` (created off main)
+
+**Estimated Timeline**:
+- Phase 1 (Core): 2-3 weeks (Analytics + Budgets + Goals CRUD)
+- Phase 2 (Enhanced): 1-2 weeks (Filtering, History, Documents, TLH)
+- Phase 3 (Advanced): 1 week (Rebalancing, Unified Insights, Crypto Insights)
+- Total: 4-6 weeks for complete implementation
+
+**Priority**: CRITICAL - This section ensures fin-infra is a complete, generic fintech toolkit suitable for any team building fintech applications.
+

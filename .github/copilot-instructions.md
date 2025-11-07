@@ -1,33 +1,53 @@
 # copilot-instructions.md (fin-infra)
 
 ## What this repo is
-- `fin-infra` is a provider-agnostic financial infrastructure toolkit: market data (equities/crypto), banking aggregation adapters, cashflows, and utilities (settings, caching, retries).
+- `fin-infra` is a **generic, reusable financial infrastructure package** for ANY fintech application: personal finance apps, wealth management platforms, banking apps, investment trackers, budgeting tools, etc.
+- **NOT application-specific**: fin-infra is designed to serve MANY applications and teams building fintech products. It provides the financial primitives; each application builds its own UI and business logic on top.
+- **NOT a backend framework**: fin-infra provides ONLY financial-specific integrations. All backend infrastructure (API, auth, DB, cache, jobs, webhooks) comes from `svc-infra`.
 - Supported Python: 3.11–3.13. Publish-ready package via Poetry; CLI entrypoint `fin-infra`.
 
 ## Product goal
-- Make finance primitives trivial to adopt: typed adapters with sane defaults and minimal configuration.
-- Provide extensibility for multiple providers per domain (market, crypto, banking, identity, credit).
-- Prioritize developer ergonomics: consistent APIs, clear models, tests, and docs.
+- **Generic fintech toolkit**: Serve ANY team building fintech applications (personal finance, wealth management, banking, budgeting, investment tracking, tax planning, etc.)
+- **Reusable primitives**: Banking connections, brokerage integrations, market data, credit scores, tax calculations, cashflow analysis, portfolio analytics, transaction categorization, recurring detection, etc.
+- **Multi-application design**: fin-infra-web is ONE example application using fin-infra; many other teams can build different apps with the same package
+- **Provider-agnostic**: Support multiple providers per domain (Plaid/Teller/MX for banking, Alpaca/IB for brokerage, Alpha Vantage/Yahoo/Polygon for market data)
+- **Easy integration**: One-call setup per capability with sensible defaults and minimal configuration
+- **Mandatory reuse**: Always use svc-infra for backend concerns; never duplicate infrastructure code
+- **Developer ergonomics**: Consistent APIs, clear models, comprehensive tests and docs
 
-## What this repo is
-- `fin-infra` is a provider-agnostic **financial data integration toolkit** for fintech applications: banking connections, brokerage accounts, market data, credit scores, tax data, and cashflow calculations.
-- **NOT a backend framework**: fin-infra provides ONLY financial-specific integrations. All backend infrastructure (API, auth, DB, cache, jobs, webhooks) comes from `svc-infra`.
-- Supported Python: 3.11–3.13. Publish-ready package via Poetry; CLI entrypoint `fin-infra`.
+## Example Use Cases (fin-infra serves ALL of these)
+1. **Personal Finance Apps** (like Mint, YNAB, Personal Capital): Budget tracking, net worth, transactions, goals
+2. **Investment Platforms** (like Robinhood, Webull, E*TRADE): Brokerage integration, portfolio analytics, market data
+3. **Banking Apps** (like Chime, Revolut, N26): Account aggregation, transaction categorization, spending insights
+4. **Wealth Management** (like Betterment, Wealthfront, Vanguard): Portfolio rebalancing, tax-loss harvesting, financial planning
+5. **Budgeting Tools** (like Simplifi, PocketGuard): Cash flow analysis, recurring detection, budget management
+6. **Tax Planning Apps** (like TurboTax, H&R Block): Tax liability estimation, crypto gains, document management
+7. **Credit Monitoring** (like Credit Karma, Credit Sesame): Credit score tracking, report analysis
+8. **Crypto Platforms** (like Coinbase, Crypto.com): Crypto portfolio tracking, tax reporting, market data
+
+**fin-infra-web** is a comprehensive reference implementation showing most capabilities, but other teams will build different UIs and workflows using the same fin-infra primitives.
 
 ## Critical Boundary: fin-infra vs svc-infra
 
 ### fin-infra scope (ONLY financial integrations)
 - ✅ Banking provider adapters (Plaid, Teller, MX)
-- ✅ Brokerage integrations (Alpaca, Interactive Brokers)
-- ✅ Market data (stocks, crypto, forex via Alpha Vantage, CoinGecko, Yahoo)
+- ✅ Brokerage integrations (Alpaca, Interactive Brokers, SnapTrade)
+- ✅ Market data (stocks, crypto, forex via Alpha Vantage, CoinGecko, Yahoo, Polygon)
 - ✅ Credit scores (Experian, Equifax, TransUnion)
-- ✅ Tax data (IRS, TaxBit, document management)
-- ✅ Financial calculations (NPV, IRR, loan amortization, portfolio analytics)
-- ✅ Financial data models (accounts, transactions, quotes, holdings, credit reports)
-- ✅ Provider normalization (symbol resolution, currency conversion)
+- ✅ Tax data (IRS, TaxBit, document management, crypto gains)
+- ✅ Financial calculations (NPV, IRR, PMT, FV, PV, loan amortization, portfolio analytics)
+- ✅ Financial data models (accounts, transactions, quotes, holdings, credit reports, goals, budgets)
+- ✅ Provider normalization (symbol resolution, currency conversion, institution mapping)
+- ✅ Transaction categorization (rule-based + ML models)
+- ✅ Recurring detection (subscription identification, bill tracking)
+- ✅ Net worth tracking (multi-account aggregation, snapshots, insights)
+- ✅ Budget management (budget CRUD, tracking, overspending alerts)
+- ✅ Cash flow analysis (income vs expenses, forecasting, projections)
+- ✅ Portfolio analytics (returns, allocation, benchmarking, rebalancing)
+- ✅ Goal management (goal CRUD, progress tracking, validation, recommendations)
 
 ### svc-infra scope (USE, don't duplicate)
-- ✅ API framework (FastAPI scaffolding, routing, middleware)
+- ✅ API framework (FastAPI scaffolding, routing, middleware, dual routers)
 - ✅ Auth & security (OAuth, sessions, MFA, password policies, JWT)
 - ✅ Database (SQL/Mongo migrations, ORM, connection management)
 - ✅ Caching (Redis, cache decorators, TTL management, invalidation)
@@ -37,17 +57,6 @@
 - ✅ Rate limiting (middleware, decorators, distributed limiting)
 - ✅ Billing & payments (Stripe/Adyen integration, subscriptions, invoices)
 - ✅ HTTP utilities (retry logic with tenacity, timeout management)
-
-## Product goal
-- Make finance primitives trivial to adopt: typed adapters with sane defaults and minimal configuration.
-- Enable fintech apps like Mint, Credit Karma, Robinhood, Personal Capital (fin-infra provides data; svc-infra provides backend).
-- Provide extensibility for multiple providers per domain (market, crypto, banking, brokerage, credit, tax).
-- Prioritize developer ergonomics: consistent APIs, clear models, comprehensive tests and docs.
-- **Mandatory reuse**: Always use svc-infra for backend concerns; never duplicate.
-- Emphasize one-call setup per capability (like svc-infra's easy builders):
-  - `easy_market()` returns a market data provider wired with defaults.
-  - `easy_crypto()` returns a crypto data provider wired with defaults.
-  - `easy_banking()` returns a banking adapter wired for sandbox/production.
   - `easy_brokerage()` returns a brokerage client for paper/live trading.
   - `easy_credit()` returns a credit score provider.
   - Cashflow functions: `npv()`, `irr()`, `xnpv()`, `xirr()`.
