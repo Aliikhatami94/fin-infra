@@ -1548,16 +1548,37 @@ Completed in follow-up iteration:
   - [ ] Add troubleshooting section (common IRS/TaxBit errors)
 
 ### 15. Transaction Categorization (ML-based, default: local model)
-- [ ] **Research (svc-infra check)**:
-  - [ ] Check svc-infra for ML model serving infrastructure
-  - [ ] Review svc-infra.cache for prediction caching
-  - [ ] Classification: Type A (financial-specific transaction categorization)
-  - [ ] Justification: Transaction category prediction (groceries, utilities, entertainment) is financial domain
-  - [ ] Reuse plan: Use svc-infra.cache for category predictions, svc-infra.jobs for batch categorization, svc-infra.db for user category overrides
-- [ ] Research: Transaction categorization approaches (rule-based, ML); category taxonomies (Plaid, MX, custom).
-- [ ] Research: Pre-trained models (sklearn, simple-transformers); merchant name normalization.
-- [ ] Design: TransactionCategory, CategoryRule, CategoryPrediction DTOs; categorizer interface. (ADR-0014)
-- [ ] Design: Easy builder signature: `easy_categorization(model="local", **config)` with model auto-loading
+- [x] **Research (svc-infra check)**:
+  - [x] Check svc-infra for ML model serving infrastructure - **COMPLETE** (No ML infrastructure found; searched for sklearn/tensorflow/pytorch/model/inference/predict across all svc-infra code - 0 matches)
+  - [x] Review svc-infra.cache for prediction caching - **COMPLETE** (Found: decorators @cache_read/@cache_write, resource pattern with resource(), TTL support, tag-based invalidation, automatic key generation - perfect for prediction caching)
+  - [x] Classification: Type A (financial-specific transaction categorization) - **CONFIRMED**
+  - [x] Justification: Merchant-to-category mapping (Starbucks→Coffee Shops, Shell→Gas Stations, Netflix→Streaming Services) is financial domain-specific; svc-infra provides no ML infrastructure
+  - [x] Reuse plan: Use svc-infra.cache for category prediction caching (TTL 24h), svc-infra.jobs for nightly batch categorization of new transactions, svc-infra.db for user category override storage, fin-infra implements ML model + rule engine
+- [x] Research: Transaction categorization approaches (rule-based, ML); category taxonomies (Plaid, MX, custom). - **COMPLETE** (docs/research/transaction-categorization.md - 800+ lines comprehensive research)
+  - **Approaches**: Rule-based (85-95% accuracy, fast, deterministic), ML (90-98% accuracy, handles variants, requires training data), Hybrid (recommended: rules + Naive Bayes fallback)
+  - **Taxonomies**: Plaid (900+ categories, too granular), MX (50-100 categories, user-friendly), Personal Capital (50-60 categories, proven). **Decision**: Start with MX-style 50-60 categories.
+  - **Hybrid Flow**: Exact match (O(1)) → regex patterns (O(n), n=1000) → ML fallback (for unknown merchants)
+  - **Normalization**: Basic cleaning (remove #, digits, legal entities) → fuzzy matching (RapidFuzz, score > 85) → ML prediction
+- [x] Research: Pre-trained models (sklearn, simple-transformers); merchant name normalization. - **COMPLETE** (documented in transaction-categorization.md)
+  - **Models**: Naive Bayes (90-95% accuracy, 5MB, 1000 pred/sec, **recommended**), Logistic Regression (92-96%, 10MB, slower training), BERT (96-98%, 500MB, overkill for merchant names)
+  - **Training Data**: Synthetic (50k+ hardcoded pairs, cold start), User-labeled (active learning, improves over time), Plaid public dataset (1M+ transactions, best quality)
+  - **Normalization**: String cleaning (lowercase, remove noise), fuzzy matching (RapidFuzz Levenshtein distance), Plaid Entity API ($0.01/lookup, paid)
+  - **Decision**: sklearn MultinomialNB with TfidfVectorizer (5MB model, bundle in package, no GPU required)
+- [x] Design: TransactionCategory, CategoryRule, CategoryPrediction DTOs; categorizer interface. (ADR-0018) - **COMPLETE** (docs/adr/0018-transaction-categorization.md - 700+ lines)
+  - **DTOs**: TransactionCategory (name, parent, keywords, examples), CategoryRule (pattern, category, is_regex, priority), CategoryPrediction (merchant_name, normalized_name, category, confidence, method, alternatives)
+  - **Categorizer Interface**: `categorize(merchant_name) → (category, confidence)`, `normalize_merchant()`, `add_rule()`, `add_override()`
+  - **Hybrid Architecture**: Layer 1 (exact dict, O(1), 85-90% coverage) → Layer 2 (regex patterns, O(n), 5-10% coverage) → Layer 3 (Naive Bayes ML, 5% coverage)
+  - **Taxonomy**: MX-style 50-60 categories (Income, Fixed Expenses, Variable Expenses, Savings, Uncategorized)
+  - **svc-infra Integration**: cache (24h TTL, 95% hit rate), db (CategoryOverride model for user corrections), jobs (nightly batch categorization, weekly model retraining)
+  - **Normalization**: lowercase → remove store #/digits/legal entities → fuzzy match (v2, RapidFuzz score > 85)
+- [x] Design: Easy builder signature: `easy_categorization(model="local", **config)` with model auto-loading - **COMPLETE** (documented in ADR-0018)
+  - Signature: `easy_categorization(model: str = "local", taxonomy: str = "mx", **config) -> Categorizer`
+  - Models: "local" (bundled sklearn Naive Bayes, default), "custom" (user-provided model path)
+  - Taxonomies: "mx" (50-60 categories, default), "plaid" (900+ categories, v2), "custom" (user-defined)
+  - Auto-loading: Loads pre-trained model from package (`categorization/models/naive_bayes.joblib`), loads merchant rules from `categorization/rules.py`
+  - Config overrides: `confidence_threshold` (default 0.75), `enable_fuzzy_match` (default False, v2), `cache_ttl` (default 86400)
+
+#### V1 Phase: Traditional ML (sklearn Naive Bayes)
 - [ ] Implement: categorization/engine.py (rule engine + ML fallback); category taxonomy.
 - [ ] Implement: categorization/models/ with pre-trained category predictor (merchant → category).
 - [ ] Implement: `easy_categorization()` one-liner that returns configured Categorizer
@@ -1566,6 +1587,85 @@ Completed in follow-up iteration:
 - [ ] Verify: Categorization accuracy on sample transaction dataset (>80% accuracy)
 - [ ] Verify: `easy_categorization()` loads model without external dependencies
 - [ ] Docs: docs/categorization.md with taxonomy reference + easy_categorization usage + custom rules + svc-infra caching integration.
+
+#### V2 Phase: LLM Integration (ai-infra)
+**Goal**: Add LLM-based categorization for improved accuracy, context-aware predictions, and natural language category descriptions
+
+- [ ] **Research (ai-infra check)**:
+  - [ ] Check ai-infra.llm for text classification capabilities (CoreLLM, structured output, providers)
+  - [ ] Review ai-infra.llm.utils.structured for schema-based extraction (category prediction)
+  - [ ] Classification: Type A (transaction categorization is financial-specific, but LLM capabilities are general AI infrastructure)
+  - [ ] Justification: Use ai-infra.llm for LLM inference (OpenAI/Anthropic/Google), structured output parsing, and retry logic; fin-infra implements financial-specific prompts and category taxonomy
+  - [ ] Reuse plan: Use ai-infra.llm.CoreLLM for LLM calls, ai-infra.llm.utils.structured for Pydantic schema validation (CategoryPrediction), ai-infra.llm.providers for multi-provider support (OpenAI/Anthropic/Google), svc-infra.cache for LLM response caching (1h TTL)
+- [ ] Research: LLM categorization approaches (zero-shot, few-shot, fine-tuning)
+  - [ ] **Zero-shot**: "Categorize this transaction: 'STARBUCKS #1234' → Category?" (no examples, 75-85% accuracy)
+  - [ ] **Few-shot**: Provide 5-10 example merchant-category pairs in prompt (85-95% accuracy)
+  - [ ] **Fine-tuning**: Fine-tune GPT-4o-mini on 10k+ labeled transactions (90-98% accuracy, $0.02/1k tokens)
+  - [ ] **Decision**: Few-shot with structured output (best accuracy/cost ratio, no fine-tuning overhead)
+- [ ] Research: Prompt engineering for transaction categorization
+  - [ ] System prompt: "You are a financial assistant. Categorize merchant names into predefined categories (Groceries, Restaurants, Gas Stations, etc.)."
+  - [ ] Few-shot examples: Include 10-20 diverse merchant-category pairs in prompt
+  - [ ] Structured output: Use Pydantic schema (CategoryPrediction) for category + confidence + reasoning
+  - [ ] Context injection: Include user's spending history (top merchants by frequency) for personalization
+- [ ] Research: Cost analysis (LLM API costs vs accuracy gains)
+  - [ ] **OpenAI GPT-4o-mini**: $0.15/1M input tokens, $0.60/1M output tokens (~$0.0001/transaction)
+  - [ ] **Anthropic Claude 3.5 Haiku**: $0.25/1M input tokens, $1.25/1M output tokens (~$0.0002/transaction)
+  - [ ] **Google Gemini 2.5 Flash**: $0.075/1M input tokens, $0.30/1M output tokens (~$0.00005/transaction, cheapest)
+  - [ ] **Break-even**: If LLM improves accuracy by 5%+ (95% → 100%), worth the cost for premium users
+  - [ ] **Mitigation**: Cache LLM predictions (svc-infra.cache, 24h TTL) to reduce API calls by 90%+
+- [ ] Design: LLM categorization layer (Layer 4 in hybrid approach)
+  - [ ] **Updated Flow**: Layer 1 (exact dict) → Layer 2 (regex) → Layer 3 (sklearn Naive Bayes) → **Layer 4 (LLM fallback for confidence < 0.6)**
+  - [ ] **LLM Prompt Template**: "Categorize: '{merchant_name}' | Your categories: {category_list} | Examples: {few_shot_examples} | Return: {category: str, confidence: float, reasoning: str}"
+  - [ ] **LLM Provider Selection**: Default to Google Gemini 2.5 Flash (cheapest), fallback to OpenAI GPT-4o-mini, allow user override
+  - [ ] **Structured Output**: Use ai-infra `with_structured_output(schema=CategoryPrediction)` for guaranteed JSON response
+- [ ] Design: Easy builder signature: `easy_categorization(model="hybrid", llm_provider="google", **config)`
+  - [ ] Models: "local" (sklearn only, v1), "llm" (LLM only, experimental), "hybrid" (rules + sklearn + LLM, **recommended**)
+  - [ ] LLM providers: "google" (Gemini 2.5 Flash, default), "openai" (GPT-4o-mini), "anthropic" (Claude 3.5 Haiku), "none" (disable LLM layer)
+  - [ ] Config overrides: `llm_confidence_threshold` (default 0.6, only use LLM if sklearn confidence < 0.6), `llm_cache_ttl` (default 86400), `llm_max_cost_per_day` (budget cap)
+- [ ] Implement: categorization/llm_layer.py (LLM categorization with ai-infra)
+  - [ ] `LLMCategorizer` class using `ai_infra.llm.CoreLLM`
+  - [ ] `categorize_with_llm(merchant_name, few_shot_examples, provider="google") -> CategoryPrediction`
+  - [ ] Structured output with `with_structured_output(schema=CategoryPrediction)`
+  - [ ] Retry logic with `ai_infra.llm.utils.with_retry` (3 retries, exponential backoff)
+  - [ ] Cost tracking: Log token usage and API costs per request
+- [ ] Implement: Update categorization/engine.py to add Layer 4 (LLM)
+  - [ ] Add `llm_categorizer: Optional[LLMCategorizer]` to HybridCategorizer
+  - [ ] Layer 4 logic: If sklearn confidence < 0.6 and llm_categorizer is not None → call LLM
+  - [ ] Cache LLM predictions: Use svc-infra.cache with 24h TTL (key: `llm_category:{merchant_name}`)
+  - [ ] Fallback: If LLM fails (rate limit, timeout), return sklearn prediction with lowered confidence
+- [ ] Implement: Personalized categorization (user context injection)
+  - [ ] Add `get_user_spending_context(user_id) -> dict` to fetch user's top merchants and categories
+  - [ ] Inject context into LLM prompt: "This user frequently shops at {top_merchants}. Likely categories: {top_categories}."
+  - [ ] Cache user context: Use svc-infra.cache with 1h TTL (key: `user_context:{user_id}`)
+- [ ] Tests: LLM categorization unit tests (mocked ai-infra responses)
+  - [ ] test_llm_categorizer_basic(): Mock CoreLLM.chat() → verify CategoryPrediction returned
+  - [ ] test_llm_structured_output(): Verify Pydantic schema validation (category, confidence, reasoning)
+  - [ ] test_llm_retry_logic(): Mock transient failure → verify 3 retries with exponential backoff
+  - [ ] test_llm_fallback_to_sklearn(): LLM fails → verify sklearn prediction used
+  - [ ] test_llm_cost_tracking(): Verify token usage and cost logged per request
+  - [ ] test_hybrid_with_llm(): Test full flow (rules → sklearn → LLM for low confidence)
+  - [ ] test_llm_caching(): Verify svc-infra.cache integration (LLM predictions cached 24h)
+  - [ ] test_personalized_categorization(): Verify user context injection into LLM prompt
+- [ ] Tests: LLM categorization acceptance tests (real LLM API calls)
+  - [ ] test_llm_google_gemini(): Real call to Google Gemini 2.5 Flash API
+  - [ ] test_llm_openai_gpt4o_mini(): Real call to OpenAI GPT-4o-mini API
+  - [ ] test_llm_anthropic_claude(): Real call to Anthropic Claude 3.5 Haiku API
+  - [ ] test_llm_accuracy(): Run on 100 test merchants, verify >90% accuracy
+  - [ ] test_llm_cost_per_transaction(): Measure actual API costs, verify <$0.0002/transaction
+  - [ ] Mark with @pytest.mark.acceptance and skip if LLM API keys not set
+- [ ] Verify: LLM improves accuracy by 5%+ over sklearn baseline
+  - [ ] Benchmark: Run 1000 test transactions through hybrid (rules + sklearn + LLM)
+  - [ ] Compare: Hybrid vs sklearn-only accuracy (target: 95%+ hybrid vs 90% sklearn)
+  - [ ] Cost analysis: Measure actual API costs (target: <$0.0001/transaction with caching)
+  - [ ] A/B test: Run 10% of users with LLM layer, 90% without → measure accuracy delta
+- [ ] Docs: Update docs/categorization.md with LLM integration
+  - [ ] Add "LLM-Powered Categorization" section
+  - [ ] Document few-shot prompt engineering (examples, system prompt)
+  - [ ] Document cost analysis (API costs, caching strategy, budget caps)
+  - [ ] Document provider comparison (Google Gemini vs OpenAI vs Anthropic)
+  - [ ] Add code examples: `easy_categorization(model="hybrid", llm_provider="google")`
+  - [ ] Document personalized categorization (user context injection)
+  - [ ] Add troubleshooting section (LLM rate limits, timeout handling, cost overruns)
 
 ### 16. Recurring Transaction Detection (pattern-based)
 - [ ] **Research (svc-infra check)**:
