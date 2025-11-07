@@ -12,6 +12,39 @@ from .models import CategoryRule
 from .taxonomy import Category
 
 
+# ===== HELPER FUNCTIONS (defined first) =====
+
+
+def _normalize_merchant(merchant: str) -> str:
+    """
+    Normalize merchant name for matching.
+
+    Steps:
+    1. Lowercase
+    2. Remove special characters (#, *, digits, apostrophes)
+    3. Remove legal entities (LLC, INC, CORP)
+    4. Strip whitespace
+    """
+    # Lowercase
+    normalized = merchant.lower()
+
+    # Remove apostrophes and possessives
+    normalized = re.sub(r"'s\b", "", normalized)  # "Peet's" -> "Peet"
+    normalized = re.sub(r"'", "", normalized)  # Remove remaining apostrophes
+
+    # Remove common noise
+    normalized = re.sub(r"[#*]", "", normalized)
+    normalized = re.sub(r"\d+", "", normalized)  # Remove digits
+
+    # Remove legal entities
+    normalized = re.sub(r"\b(llc|inc|corp|ltd|co)\b", "", normalized)
+
+    # Remove extra whitespace
+    normalized = " ".join(normalized.split())
+
+    return normalized.strip()
+
+
 # ===== EXACT MATCH RULES (High Priority) =====
 
 EXACT_RULES: dict[str, Category] = {
@@ -24,6 +57,7 @@ EXACT_RULES: dict[str, Category] = {
     "tax refund": Category.INCOME_REFUND,
     # Food & Dining - Coffee
     "starbucks": Category.VAR_COFFEE_SHOPS,
+    "peet coffee": Category.VAR_COFFEE_SHOPS,  # Normalized (no apostrophe)
     "peets coffee": Category.VAR_COFFEE_SHOPS,
     "dunkin donuts": Category.VAR_COFFEE_SHOPS,
     "blue bottle coffee": Category.VAR_COFFEE_SHOPS,
@@ -197,33 +231,7 @@ COMPILED_REGEX_RULES = [
 ]
 
 
-# ===== HELPER FUNCTIONS =====
-
-
-def _normalize_merchant(merchant: str) -> str:
-    """
-    Normalize merchant name for matching.
-
-    Steps:
-    1. Lowercase
-    2. Remove special characters (#, *, digits)
-    3. Remove legal entities (LLC, INC, CORP)
-    4. Strip whitespace
-    """
-    # Lowercase
-    normalized = merchant.lower()
-
-    # Remove common noise
-    normalized = re.sub(r"[#*]", "", normalized)
-    normalized = re.sub(r"\d+", "", normalized)  # Remove digits
-
-    # Remove legal entities
-    normalized = re.sub(r"\b(llc|inc|corp|ltd|co)\b", "", normalized)
-
-    # Remove extra whitespace
-    normalized = " ".join(normalized.split())
-
-    return normalized.strip()
+# ===== PUBLIC FUNCTIONS =====
 
 
 def get_exact_match(merchant: str) -> Optional[Category]:

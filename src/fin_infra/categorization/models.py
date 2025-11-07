@@ -6,7 +6,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from .taxonomy import Category, CategoryGroup
 
@@ -35,8 +35,8 @@ class CategoryPrediction(BaseModel):
     )
     reasoning: Optional[str] = Field(None, description="Explanation of prediction (for LLM)")
 
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "merchant_name": "STARBUCKS #12345",
                 "normalized_name": "Starbucks",
@@ -46,6 +46,7 @@ class CategoryPrediction(BaseModel):
                 "alternatives": [("Restaurants", 0.15), ("Fast Food", 0.10)],
             }
         }
+    )
 
 
 class CategoryRule(BaseModel):
@@ -57,8 +58,8 @@ class CategoryRule(BaseModel):
     priority: int = Field(default=100, description="Rule priority (lower = higher priority)")
     case_sensitive: bool = Field(default=False, description="Case-sensitive matching")
 
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "pattern": "STARBUCKS",
                 "category": "Coffee Shops",
@@ -67,6 +68,7 @@ class CategoryRule(BaseModel):
                 "case_sensitive": False,
             }
         }
+    )
 
 
 class CategoryOverride(BaseModel):
@@ -78,8 +80,8 @@ class CategoryOverride(BaseModel):
     created_at: datetime = Field(default_factory=datetime.utcnow, description="Creation timestamp")
     updated_at: datetime = Field(default_factory=datetime.utcnow, description="Last update timestamp")
 
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "user_id": "user_123",
                 "merchant_name": "Local Coffee Shop",
@@ -88,6 +90,7 @@ class CategoryOverride(BaseModel):
                 "updated_at": "2025-01-15T10:30:00Z",
             }
         }
+    )
 
 
 class CategorizationRequest(BaseModel):
@@ -103,8 +106,8 @@ class CategorizationRequest(BaseModel):
         description="Minimum confidence threshold",
     )
 
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "merchant_name": "STARBUCKS #12345",
                 "user_id": "user_123",
@@ -112,6 +115,7 @@ class CategorizationRequest(BaseModel):
                 "min_confidence": 0.6,
             }
         }
+    )
 
 
 class CategorizationResponse(BaseModel):
@@ -121,8 +125,8 @@ class CategorizationResponse(BaseModel):
     cached: bool = Field(default=False, description="Whether result was cached")
     processing_time_ms: float = Field(..., description="Processing time in milliseconds")
 
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "prediction": {
                     "merchant_name": "STARBUCKS #12345",
@@ -136,6 +140,7 @@ class CategorizationResponse(BaseModel):
                 "processing_time_ms": 2.5,
             }
         }
+    )
 
 
 class CategoryStats(BaseModel):
@@ -146,8 +151,8 @@ class CategoryStats(BaseModel):
     total_rules: int = Field(..., description="Total number of rules")
     cache_hit_rate: Optional[float] = Field(None, description="Cache hit rate (0-1)")
 
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "total_categories": 56,
                 "categories_by_group": {
@@ -161,3 +166,4 @@ class CategoryStats(BaseModel):
                 "cache_hit_rate": 0.92,
             }
         }
+    )
