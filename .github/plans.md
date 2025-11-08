@@ -808,7 +808,7 @@ def add_capability(
     - [x] Quality checks: mypy clean, ruff clean
     - Note: Webhooks will be wired in Task 17 FastAPI helper
 
-17. [ ] **Create add_budgets() FastAPI helper** (FILE: `src/fin_infra/budgets/add.py`)
+17. [x] **Create add_budgets() FastAPI helper** (FILE: `src/fin_infra/budgets/add.py`)
     - [x] Use APIRouter (user_router requires database setup for auth) ✅
     - [x] Mount budget endpoints: ✅
       - [x] `POST /budgets` (body: name, type, period, categories) → Budget
@@ -831,11 +831,31 @@ def add_capability(
     - Tests: 21 total (endpoint tests + integration test)
     - Quality: mypy clean, ruff clean, all tests passing
 
-18. [ ] **Write budgets documentation**
-    - [ ] Create `src/fin_infra/docs/budgets.md` (comprehensive guide)
-    - [ ] Create ADR: `src/fin_infra/docs/adr/0024-budget-management-design.md`
-    - [ ] Add README capability card for budgets
+18. [x] **Write budgets documentation** ✅
+    - [x] Create `src/fin_infra/docs/budgets.md` (comprehensive guide) - ~1200 lines ✅
+    - [x] Create ADR: `src/fin_infra/docs/adr/0024-budget-management-design.md` - ~780 lines ✅
+    - [x] Add README capability card for budgets - Added to Helper Index table ✅
     - Verify in coverage analysis: Validates budget implementation is generic
+    
+    **Documentation Summary**:
+    - budgets.md: ~1200 lines comprehensive guide
+      - Overview: Budget types, periods, features, use cases
+      - Quick Start: 4 examples (programmatic, templates, FastAPI, cURL)
+      - Core Concepts: Types, periods, categories, rollover
+      - Budget Templates: 5 pre-built templates with detailed allocations
+      - Budget Progress Tracking: Real-time progress, models, JSON examples
+      - Budget Alerts: Warning (80%), Limit (100%), Overspending (110%)
+      - API Reference: All 8 endpoints with full request/response examples
+      - Implementation Details: Schema, tracker, builders, FastAPI helper
+      - Testing: Unit and integration test examples
+      - Troubleshooting: Common issues, debug mode, performance tips
+      - Future Enhancements: v1.1-v1.4 roadmap
+    - ADR 0024: ~780 lines architecture decision record
+      - Context: User needs, use cases, requirements
+      - Decision: 4-layer architecture (CRUD, Templates, Alerts, API)
+      - Database schema, period calculation, template system
+      - Consequences: Benefits, tradeoffs, future considerations
+    - README: Added budgets to Helper Index table with link to budgets.md
 
 **Budgets Module Completion Checklist** (MANDATORY before marking module complete):
 
