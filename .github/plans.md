@@ -19,6 +19,14 @@
 - [~] Skipped (exists in svc-infra/ai-infra / out of scope)
 - (note) Commentary or reference
 
+**Testing & Documentation**: Each task includes inline test file paths. After completing a MODULE (group of tasks), complete the "Module Completion Checklist" which verifies:
+- ✅ Unit tests + integration tests + acceptance tests (all pass, >80% coverage)
+- ✅ Comprehensive documentation (`src/fin_infra/docs/{module}.md`, 500+ lines)
+- ✅ ADR for architectural decisions (`src/fin_infra/docs/adr/`)
+- ✅ Code quality (ruff, mypy pass)
+- ✅ API compliance (dual routers, `add_prefixed_docs()`, OpenAPI visible)
+- ✅ README update (IF NEEDED - only for NEW capability domains)
+
 ---
 
 ## Table of Contents
@@ -460,6 +468,41 @@ def add_capability(
 
 ---
 
+### 📝 Testing & Documentation Requirements (APPLY TO ALL TASKS)
+
+**CRITICAL**: Each task includes inline testing requirements (unit tests, integration tests). After completing each MODULE (not individual tasks), you MUST complete the "Module Completion Checklist" which includes:
+
+1. **Testing** (MANDATORY for each task AND module):
+   - **Unit tests**: Test core logic with mocked dependencies (target: >80% coverage)
+     - File location specified in task (e.g., `tests/unit/analytics/test_cash_flow.py`)
+   - **Integration tests**: Test FastAPI endpoints with TestClient and mocked external services
+     - File location specified in task (e.g., `tests/integration/test_analytics_api.py`)
+   - **Acceptance tests**: Real API calls with sandbox credentials, marked `@pytest.mark.acceptance`
+     - File location: `tests/acceptance/test_{module}.py`
+   - **Router tests**: Verify dual router usage (no generic APIRouter)
+   - **OpenAPI tests**: Verify `/{prefix}/docs` and `/{prefix}/openapi.json` exist
+
+2. **Documentation** (MANDATORY for each module):
+   - **Comprehensive doc**: `src/fin_infra/docs/{module}.md` (500+ lines with quick start, API reference, use cases)
+   - **ADR**: `src/fin_infra/docs/adr/{number}-{module}-design.md` (when significant architectural decisions made)
+   - **README update**: Add capability card to README.md (IF NEEDED - only for NEW capabilities not previously documented)
+   - **Examples**: Optional but recommended: `examples/{module}_demo.py`
+
+3. **Code Quality** (MANDATORY before marking module complete):
+   - `ruff format src/fin_infra/{module}` passes
+   - `ruff check src/fin_infra/{module}` passes (no errors)
+   - `mypy src/fin_infra/{module}` passes (full type coverage)
+
+4. **API Compliance** (MANDATORY):
+   - Confirm `add_prefixed_docs()` called in `add.py`
+   - Visit `/docs` and verify module card appears on landing page
+   - Test all endpoints with curl/httpie/Postman
+   - Verify no 307 redirects (trailing slash handled correctly)
+
+**Note on README Updates**: Only update README.md when adding a **completely new capability domain** that users need to discover (e.g., Analytics, Documents, Insights). Do NOT update README for enhancements to existing modules (e.g., adding transaction filtering to banking) - those go in the module's dedicated doc file (`src/fin_infra/docs/{module}.md`).
+
+---
+
 ### Phase 1: Core Analytics & Budget Management (HIGH PRIORITY)
 
 **Context**: These features are essential for ANY fintech application with transactions and accounts. Current coverage: 0-30%. Target: 100%.
@@ -596,6 +639,36 @@ def add_capability(
       - Multi-provider support
     - [ ] Add README capability card for analytics
 
+**Analytics Module Completion Checklist** (MANDATORY before marking module complete):
+
+- [ ] **Testing Requirements**:
+  - [ ] Unit tests: `tests/unit/analytics/test_cash_flow.py`
+  - [ ] Unit tests: `tests/unit/analytics/test_spending.py`
+  - [ ] Unit tests: `tests/unit/analytics/test_portfolio.py`
+  - [ ] Unit tests: `tests/unit/analytics/test_projections.py`
+  - [ ] Integration tests: `tests/integration/test_analytics_api.py` (TestClient with mocked dependencies)
+  - [ ] Acceptance tests: `tests/acceptance/test_analytics.py` (marked with `@pytest.mark.acceptance`)
+  - [ ] Router tests: Verify dual router usage (no generic APIRouter)
+  - [ ] OpenAPI tests: Verify `/analytics/docs` and `/analytics/openapi.json` exist
+  - [ ] Coverage: Run `pytest --cov=src/fin_infra/analytics --cov-report=term-missing` (target: >80%)
+
+- [ ] **Code Quality**:
+  - [ ] `ruff format src/fin_infra/analytics` passes
+  - [ ] `ruff check src/fin_infra/analytics` passes (no errors)
+  - [ ] `mypy src/fin_infra/analytics` passes (full type coverage)
+
+- [ ] **Documentation**:
+  - [ ] `src/fin_infra/docs/analytics.md` created (500+ lines)
+  - [ ] ADR `src/fin_infra/docs/adr/0023-analytics-module-design.md` created
+  - [ ] README.md updated with analytics capability card (IF NEEDED - only if analytics is new capability not previously mentioned)
+  - [ ] Examples added: `examples/analytics_demo.py` (optional but recommended)
+
+- [ ] **API Compliance**:
+  - [ ] Confirm `add_prefixed_docs()` called in `add.py`
+  - [ ] Visit `/docs` and verify "Analytics" card appears on landing page
+  - [ ] Test all endpoints with curl/httpie/Postman
+  - [ ] Verify no 307 redirects (trailing slash handled correctly)
+
 #### Module 2: Budgets Module Implementation
 
 **Purpose**: Budget management with CRUD, tracking, alerts, and templates. Serves personal finance, expense management, small business accounting, and project management apps.
@@ -685,6 +758,35 @@ def add_capability(
     - [ ] Add README capability card for budgets
     - Verify in coverage analysis: Validates budget implementation is generic
 
+**Budgets Module Completion Checklist** (MANDATORY before marking module complete):
+
+- [ ] **Testing Requirements**:
+  - [ ] Unit tests: `tests/unit/budgets/test_tracker.py`
+  - [ ] Unit tests: `tests/unit/budgets/test_alerts.py`
+  - [ ] Unit tests: `tests/unit/budgets/test_templates.py`
+  - [ ] Integration tests: `tests/integration/test_budgets_api.py` (TestClient with mocked dependencies)
+  - [ ] Acceptance tests: `tests/acceptance/test_budgets.py` (marked with `@pytest.mark.acceptance`)
+  - [ ] Router tests: Verify dual router usage (no generic APIRouter)
+  - [ ] OpenAPI tests: Verify `/budgets/docs` and `/budgets/openapi.json` exist
+  - [ ] Coverage: Run `pytest --cov=src/fin_infra/budgets --cov-report=term-missing` (target: >80%)
+
+- [ ] **Code Quality**:
+  - [ ] `ruff format src/fin_infra/budgets` passes
+  - [ ] `ruff check src/fin_infra/budgets` passes (no errors)
+  - [ ] `mypy src/fin_infra/budgets` passes (full type coverage)
+
+- [ ] **Documentation**:
+  - [ ] `src/fin_infra/docs/budgets.md` created (500+ lines)
+  - [ ] ADR `src/fin_infra/docs/adr/0024-budget-management-design.md` created
+  - [ ] README.md updated with budgets capability card (IF NEEDED - only if budgets is new capability not previously mentioned)
+  - [ ] Examples added: `examples/budgets_demo.py` (optional but recommended)
+
+- [ ] **API Compliance**:
+  - [ ] Confirm `add_prefixed_docs()` called in `add.py`
+  - [ ] Visit `/docs` and verify "Budget Management" card appears on landing page
+  - [ ] Test all endpoints with curl/httpie/Postman
+  - [ ] Verify no 307 redirects (trailing slash handled correctly)
+
 #### Module 3: Goals Module Enhancement
 
 **Purpose**: Expand existing net_worth/goals.py into standalone module with full CRUD, milestone tracking, and funding allocation. Serves personal finance, wealth management, retirement planning, and business savings apps.
@@ -770,6 +872,36 @@ def add_capability(
     - [ ] Create ADR: `src/fin_infra/docs/adr/0025-goals-module-refactoring.md`
     - [ ] Add README capability card for goals
     - [ ] Update `src/fin_infra/docs/net-worth.md`: Remove goals section, add reference to goals.md
+
+**Goals Module Completion Checklist** (MANDATORY before marking module complete):
+
+- [ ] **Testing Requirements**:
+  - [ ] Unit tests: `tests/unit/goals/test_management.py`
+  - [ ] Unit tests: `tests/unit/goals/test_milestones.py`
+  - [ ] Unit tests: `tests/unit/goals/test_funding.py`
+  - [ ] Integration tests: `tests/integration/test_goals_api.py` (TestClient with mocked dependencies)
+  - [ ] Acceptance tests: `tests/acceptance/test_goals.py` (marked with `@pytest.mark.acceptance`)
+  - [ ] Router tests: Verify dual router usage (no generic APIRouter)
+  - [ ] OpenAPI tests: Verify `/goals/docs` and `/goals/openapi.json` exist
+  - [ ] Coverage: Run `pytest --cov=src/fin_infra/goals --cov-report=term-missing` (target: >80%)
+
+- [ ] **Code Quality**:
+  - [ ] `ruff format src/fin_infra/goals` passes
+  - [ ] `ruff check src/fin_infra/goals` passes (no errors)
+  - [ ] `mypy src/fin_infra/goals` passes (full type coverage)
+
+- [ ] **Documentation**:
+  - [ ] `src/fin_infra/docs/goals.md` created (500+ lines)
+  - [ ] ADR `src/fin_infra/docs/adr/0025-goals-module-refactoring.md` created
+  - [ ] README.md updated with goals capability card (IF NEEDED - only if goals expansion needs highlighting)
+  - [ ] `src/fin_infra/docs/net-worth.md` updated to reference goals.md
+  - [ ] Examples added: `examples/goals_demo.py` (optional but recommended)
+
+- [ ] **API Compliance**:
+  - [ ] Confirm `add_prefixed_docs()` called in `add.py`
+  - [ ] Visit `/docs` and verify "Goal Management" card appears on landing page
+  - [ ] Test all endpoints with curl/httpie/Postman
+  - [ ] Verify no 307 redirects (trailing slash handled correctly)
 
 #### Phase 1 Verification & Documentation
 
@@ -945,6 +1077,35 @@ def add_capability(
     - [ ] Create ADR: `src/fin_infra/docs/adr/0027-document-management-design.md`
     - [ ] Add README capability card for documents
 
+**Documents Module Completion Checklist** (MANDATORY before marking module complete):
+
+- [ ] **Testing Requirements**:
+  - [ ] Unit tests: `tests/unit/documents/test_storage.py`
+  - [ ] Unit tests: `tests/unit/documents/test_ocr.py`
+  - [ ] Unit tests: `tests/unit/documents/test_analysis.py`
+  - [ ] Integration tests: `tests/integration/test_documents_api.py` (TestClient with mocked OCR/storage)
+  - [ ] Acceptance tests: `tests/acceptance/test_documents.py` (marked with `@pytest.mark.acceptance`)
+  - [ ] Router tests: Verify dual router usage (no generic APIRouter)
+  - [ ] OpenAPI tests: Verify `/documents/docs` and `/documents/openapi.json` exist
+  - [ ] Coverage: Run `pytest --cov=src/fin_infra/documents --cov-report=term-missing` (target: >80%)
+
+- [ ] **Code Quality**:
+  - [ ] `ruff format src/fin_infra/documents` passes
+  - [ ] `ruff check src/fin_infra/documents` passes (no errors)
+  - [ ] `mypy src/fin_infra/documents` passes (full type coverage)
+
+- [ ] **Documentation**:
+  - [ ] `src/fin_infra/docs/documents.md` created (500+ lines)
+  - [ ] ADR `src/fin_infra/docs/adr/0027-document-management-design.md` created
+  - [ ] README.md updated with documents capability card (IF NEEDED)
+  - [ ] Examples added: `examples/documents_demo.py` (optional but recommended)
+
+- [ ] **API Compliance**:
+  - [ ] Confirm `add_prefixed_docs()` called in `add.py`
+  - [ ] Visit `/docs` and verify "Document Management" card appears on landing page
+  - [ ] Test all endpoints with curl/httpie/Postman
+  - [ ] Verify no 307 redirects (trailing slash handled correctly)
+
 #### Tax Module Enhancement
 
 43. [ ] **Implement tax-loss harvesting logic** (NEW FILE: `src/fin_infra/tax/tlh.py`)
@@ -964,6 +1125,40 @@ def add_capability(
     - [ ] Update `add_tax_data()` to include TLH endpoints
     - [ ] Integration tests: `tests/integration/test_tax_api.py`
     - Verify in coverage analysis: Improves "Taxes Page" from 50% to 75% coverage
+
+**Phase 2 Enhanced Modules Completion Checklist** (MANDATORY):
+
+- [ ] **Banking Enhancement Testing**:
+  - [ ] Unit tests: Update `tests/unit/banking/test_transactions.py` with filtering tests
+  - [ ] Unit tests: `tests/unit/banking/test_history.py` (NEW)
+  - [ ] Integration tests: Update `tests/integration/test_banking_api.py` with new endpoints
+  - [ ] Test filtering with multiple combinations of params
+  - [ ] Test pagination (edge cases: empty results, large datasets)
+  - [ ] Test history endpoint with various date ranges
+
+- [ ] **Recurring Enhancement Testing**:
+  - [ ] Unit tests: `tests/unit/recurring/test_summary.py` (NEW)
+  - [ ] Integration tests: Update `tests/integration/test_recurring_api.py` with summary endpoint
+  - [ ] Test recurring summary calculations
+  - [ ] Test cancellation opportunity detection
+
+- [ ] **Tax Enhancement Testing**:
+  - [ ] Unit tests: `tests/unit/tax/test_tlh.py` (NEW)
+  - [ ] Integration tests: Update `tests/integration/test_tax_api.py` with TLH endpoints
+  - [ ] Test wash sale rule detection
+  - [ ] Test replacement security suggestions
+  - [ ] Mock ai-infra LLM calls if used
+
+- [ ] **Code Quality (All Enhanced Modules)**:
+  - [ ] `ruff format src/fin_infra/banking src/fin_infra/recurring src/fin_infra/tax` passes
+  - [ ] `ruff check` passes (no errors)
+  - [ ] `mypy` passes (full type coverage)
+
+- [ ] **Documentation Updates**:
+  - [ ] Update `src/fin_infra/docs/banking.md` with filtering and history sections
+  - [ ] Update `src/fin_infra/docs/recurring.md` with summary section
+  - [ ] Update `src/fin_infra/docs/tax.md` with tax-loss harvesting section
+  - [ ] Update README.md (IF NEEDED - only if significant new capabilities)
 
 #### Phase 2 Verification
 
@@ -1011,6 +1206,53 @@ def add_capability(
     - [ ] All tests pass
     - [ ] Update coverage analysis: Target >90% overall coverage achieved
     - [ ] Final documentation updates
+
+**Phase 3 Advanced Features Completion Checklist** (MANDATORY):
+
+- [ ] **Portfolio Rebalancing Testing**:
+  - [ ] Unit tests: `tests/unit/analytics/test_rebalancing.py` (NEW)
+  - [ ] Test rebalancing plan generation
+  - [ ] Test tax impact minimization
+  - [ ] Test transaction cost calculations
+  - [ ] Mock ai-infra LLM calls if used
+
+- [ ] **Insights Feed Testing**:
+  - [ ] Unit tests: `tests/unit/insights/test_aggregator.py` (NEW)
+  - [ ] Unit tests: `tests/unit/insights/test_prioritization.py` (NEW)
+  - [ ] Integration tests: `tests/integration/test_insights_api.py` (NEW)
+  - [ ] Test insight aggregation from multiple sources
+  - [ ] Test prioritization logic (critical > recommendations > informational)
+  - [ ] Test read/unread tracking
+
+- [ ] **Crypto Insights Testing**:
+  - [ ] Unit tests: `tests/unit/crypto/test_insights.py` (NEW)
+  - [ ] Integration tests: Update `tests/integration/test_crypto_api.py` with insights endpoint
+  - [ ] Test insight generation
+  - [ ] Mock ai-infra LLM calls (MANDATORY - don't call real LLM in tests)
+
+- [ ] **Scenario Modeling Testing**:
+  - [ ] Unit tests: `tests/unit/analytics/test_scenarios.py` (NEW)
+  - [ ] Integration tests: Update `tests/integration/test_analytics_api.py` with scenario endpoint
+  - [ ] Test various what-if scenarios
+  - [ ] Test projection calculations
+
+- [ ] **Code Quality (All Phase 3 Modules)**:
+  - [ ] `ruff format src/fin_infra/analytics src/fin_infra/insights src/fin_infra/crypto` passes
+  - [ ] `ruff check` passes (no errors)
+  - [ ] `mypy` passes (full type coverage)
+
+- [ ] **Documentation**:
+  - [ ] Create `src/fin_infra/docs/insights.md` (NEW - comprehensive guide, 500+ lines)
+  - [ ] Update `src/fin_infra/docs/analytics.md` with rebalancing and scenario modeling sections
+  - [ ] Update `src/fin_infra/docs/crypto.md` with insights section
+  - [ ] Create ADR: `src/fin_infra/docs/adr/0028-advanced-features-design.md`
+  - [ ] Update README.md with insights feed capability card (IF NEEDED)
+
+- [ ] **API Compliance**:
+  - [ ] Confirm `add_prefixed_docs()` called for insights module
+  - [ ] Visit `/docs` and verify "Insights Feed" card appears (if standalone module)
+  - [ ] Test all new endpoints with curl/httpie/Postman
+  - [ ] Verify no 307 redirects
 
 ---
 
