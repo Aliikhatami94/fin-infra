@@ -10,7 +10,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class BudgetType(str, Enum):
@@ -125,8 +125,8 @@ class Budget(BaseModel):
     created_at: datetime = Field(default_factory=datetime.now, description="Creation timestamp")
     updated_at: datetime = Field(default_factory=datetime.now, description="Last update timestamp")
 
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "id": "bud_123",
                 "user_id": "user_123",
@@ -145,6 +145,7 @@ class Budget(BaseModel):
                 "updated_at": "2025-11-01T00:00:00",
             }
         }
+    )
 
 
 class BudgetCategory(BaseModel):
@@ -175,8 +176,8 @@ class BudgetCategory(BaseModel):
     remaining_amount: float = Field(..., description="Budget remaining")
     percent_used: float = Field(..., description="Percentage of budget used", ge=0, le=200)
 
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "category_name": "Groceries",
                 "budgeted_amount": 600.00,
@@ -185,6 +186,7 @@ class BudgetCategory(BaseModel):
                 "percent_used": 70.92,
             }
         }
+    )
 
 
 class BudgetProgress(BaseModel):
@@ -235,8 +237,8 @@ class BudgetProgress(BaseModel):
     period_days_elapsed: int = Field(..., description="Days elapsed in current period", ge=0)
     period_days_total: int = Field(..., description="Total days in period", ge=1)
 
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "budget_id": "bud_123",
                 "current_period": "November 2025",
@@ -264,6 +266,7 @@ class BudgetProgress(BaseModel):
                 "period_days_total": 30,
             }
         }
+    )
 
 
 class BudgetAlert(BaseModel):
@@ -300,8 +303,8 @@ class BudgetAlert(BaseModel):
     triggered_at: datetime = Field(..., description="Timestamp when alert was triggered")
     severity: AlertSeverity = Field(..., description="Alert severity level")
 
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "budget_id": "bud_123",
                 "category": "Restaurants",
@@ -312,6 +315,7 @@ class BudgetAlert(BaseModel):
                 "severity": "warning",
             }
         }
+    )
 
 
 class BudgetTemplate(BaseModel):
@@ -359,8 +363,8 @@ class BudgetTemplate(BaseModel):
     description: str = Field(..., description="Template description and use case")
     is_custom: bool = Field(default=False, description="Whether this is a custom template")
 
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "name": "50/30/20",
                 "type": "personal",
@@ -377,3 +381,4 @@ class BudgetTemplate(BaseModel):
                 "is_custom": False,
             }
         }
+    )
