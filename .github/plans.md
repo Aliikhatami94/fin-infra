@@ -897,11 +897,15 @@ def add_capability(
 
 #### Module 2.5: Persistence Strategy & Scaffold CLI
 
-**Purpose**: Implement template-based persistence scaffolding following svc-infra's pattern. Provides CLI for applications to generate SQLAlchemy models, Pydantic schemas, and repository patterns for budgets, goals, and net-worth domains. Resolves all 11 TODO comments about database persistence.
+**Purpose**: Implement template-based persistence scaffolding following svc-infra's pattern. Provides CLI for applications to generate SQLAlchemy models and Pydantic schemas for budgets, goals, and net-worth domains. Generated models work seamlessly with `svc-infra.add_sql_resources()` for automatic CRUD APIs. Resolves all 11 TODO comments about database persistence.
 
 **Reference Document**: `src/fin_infra/docs/presistence-strategy.md` (comprehensive strategy with 10-phase implementation plan)
 
-**Key Decision**: fin-infra is a LIBRARY (not a framework) and should NOT own database tables. Applications own their persistence layer. fin-infra provides templates + scaffold CLI.
+**Key Decisions**:
+1. **fin-infra is a LIBRARY**: Applications own their persistence layer. fin-infra provides scaffold templates + CLI.
+2. **No manual CRUD APIs**: Generated models integrate with `svc_infra.api.fastapi.db.sql.add_sql_resources()` for zero-code CRUD endpoints.
+3. **Repository is optional**: Apps can use svc-infra's `SqlRepository` directly or customize generated repository pattern.
+4. **Core calculations remain in fin-infra**: Pure functions like `detect_overspending()`, `check_goal_feasibility()` stay in library.
 
 **Scaffold Coverage Summary**:
 
@@ -914,45 +918,95 @@ def add_capability(
 | **Categorization** | 1 in `categorization/llm_layer.py` | *(No scaffold - use svc-infra.cache)* | N/A | N/A |
 | **TOTAL** | **11 TODOs** | **12 template files** | **3 scaffold functions** | **3 template directories** |
 
-**CLI Commands**:
+**Complete Workflow: Scaffold → Migrate → Auto-CRUD (3 steps to production)**:
 ```bash
-# Generate persistence for each domain
+# STEP 1: Generate models + schemas with scaffold CLI
 fin-infra scaffold budgets --dest-dir app/models/ [--include-tenant] [--include-soft-delete]
-fin-infra scaffold goals --dest-dir app/models/ [--include-tenant] [--include-soft-delete]
-fin-infra scaffold net-worth --dest-dir app/models/ [--include-tenant] [--include-soft-delete]
+
+# Generated files:
+# ✓ app/models/budget.py           (SQLAlchemy model)
+# ✓ app/models/budget_schemas.py   (Pydantic schemas)
+# ✓ app/models/budget_repository.py (optional - for custom queries)
+# ✓ app/models/__init__.py          (re-exports)
+
+# STEP 2: Run svc-infra migrations
+svc-infra revision -m "add budgets table" --autogenerate
+svc-infra upgrade head
+
+# STEP 3: Wire automatic CRUD with ONE function call (svc-infra magic!)
+# In app/main.py:
+from svc_infra.api.fastapi.db.sql import add_sql_resources
+from svc_infra.db.sql.resource import SqlResource
+from app.models.budget import Budget
+from app.models.budget_schemas import BudgetRead, BudgetCreate, BudgetUpdate
+
+add_sql_resources(app, resources=[
+    SqlResource(
+        model=Budget,
+        prefix="/budgets",
+        tags=["Budgets"],
+        soft_delete=True,
+        search_fields=["name", "user_id"],
+        read_schema=BudgetRead,
+        create_schema=BudgetCreate,
+        update_schema=BudgetUpdate,
+    ),
+])
+
+# ✅ DONE! Automatic REST API with pagination, search, ordering!
+# POST   /_sql/budgets              (create)
+# GET    /_sql/budgets              (list with ?search=, ?page=, ?order_by=)
+# GET    /_sql/budgets/{id}         (get by ID)
+# PATCH  /_sql/budgets/{id}         (update)
+# DELETE /_sql/budgets/{id}         (soft or hard delete)
+
+# BONUS: Use fin-infra core functions for business logic
+from fin_infra.budgets.core import detect_overspending
+
+# App fetches from database (svc-infra handles CRUD)
+budget = ...  # Retrieved via add_sql_resources() endpoints
+transactions = ...  # Your app's transaction data
+
+# fin-infra provides financial calculations
+overspending = detect_overspending(budget.categories, actual_spending)
 ```
+
+**Key Point**: No manual router code needed! `add_sql_resources()` auto-generates CRUD from your models.
 
 **Tasks**:
 
-1. [ ] **Create scaffold utilities** (FILE: `src/fin_infra/utils.py`)
-    - [ ] Function: `render_template(tmpl_dir: str, name: str, subs: dict) -> str`
+1. [x] **Create scaffold utilities** (FILE: `src/fin_infra/utils/scaffold.py`) ✅ COMPLETE
+    - [x] Function: `render_template(tmpl_dir: str, name: str, subs: dict) -> str`
       - Uses `importlib.resources.files()` to load `.tmpl` files from package
       - Uses `string.Template.safe_substitute()` for variable substitution
       - Variables: `${Entity}`, `${table_name}`, `${tenant_field}`, `${soft_delete_field}`, etc.
       - Example: `render_template("fin_infra.budgets.templates", "models.py.tmpl", {"Entity": "Budget"})`
-    - [ ] Function: `write(dest: Path, content: str, overwrite: bool = False) -> Dict[str, Any]`
+    - [x] Function: `write(dest: Path, content: str, overwrite: bool = False) -> Dict[str, Any]`
       - Creates parent directories automatically with `dest.parent.mkdir(parents=True, exist_ok=True)`
       - Checks if file exists, returns `{"action": "skipped", "reason": "exists"}` if `overwrite=False`
       - Writes file, returns `{"path": str(dest), "action": "wrote"}`
       - Used by scaffold functions to write generated code
-    - [ ] Function: `ensure_init_py(dir_path: Path, content: str, overwrite: bool) -> Dict[str, Any]`
+    - [x] Function: `ensure_init_py(dir_path: Path, content: str, overwrite: bool) -> Dict[str, Any]`
       - Wrapper around `write()` for creating `__init__.py` files
       - Generates re-exports for models, schemas, repository classes
       - Example content: `from .budget import BudgetModel; __all__ = ["BudgetModel"]`
-    - [ ] Comprehensive docstrings with examples for all functions
-    - [ ] Full type annotations (no mypy errors)
-    - [ ] Unit tests: `tests/unit/test_utils.py` (15+ tests)
-      - Test template loading from package resources
+    - [x] Comprehensive docstrings with examples for all functions
+    - [x] Full type annotations (no mypy errors)
+    - [x] Unit tests: `tests/unit/test_utils.py` (21 tests - exceeded estimate!)
+      - Test template loading from package resources (6 tests)
       - Test variable substitution (simple + complex)
       - Test missing variables (safe_substitute behavior)
-      - Test file writing (success, skip existing, overwrite)
+      - Test file writing (success, skip existing, overwrite) (7 tests)
       - Test parent directory creation
-      - Test __init__.py generation
-    - [ ] Quality checks: `mypy src/fin_infra/utils.py` passes, `ruff check` passes
-    - Reference: Phase 2 in presistence-strategy.md (2-4 hours estimated)
+      - Test __init__.py generation (6 tests)
+      - Test integration scenarios (2 tests)
+    - [x] Quality checks: `mypy src/fin_infra/utils/scaffold.py` passes ✓, `ruff check` passes ✓
+    - [x] Implementation: Created utils/scaffold.py (utils is a package directory)
+    - [x] Export: Updated utils/__init__.py with scaffold function exports
+    - Reference: Phase 2 in presistence-strategy.md (Completed in ~2 hours)
 
-2. [ ] **Create budgets scaffold templates** (DIRECTORY: `src/fin_infra/budgets/templates/`)
-    - [ ] Create directory structure:
+2. [x] **Create budgets scaffold templates** (DIRECTORY: `src/fin_infra/budgets/templates/`) ✅ COMPLETE
+    - [x] Create directory structure:
       ```
       src/fin_infra/budgets/templates/
       ├── models.py.tmpl           # SQLAlchemy model
@@ -960,53 +1014,61 @@ fin-infra scaffold net-worth --dest-dir app/models/ [--include-tenant] [--includ
       ├── repository.py.tmpl       # Repository pattern
       └── README.md                # Template usage guide
       ```
-    - [ ] **File: `models.py.tmpl`** (~150 lines)
+    - [x] **File: `models.py.tmpl`** (202 lines - exceeded estimate!)
       - SQLAlchemy model: `class ${Entity}(ModelBase)` with `__tablename__ = "${table_name}"`
       - Uses `from svc_infra.db.sql.base import ModelBase` for Alembic migration discovery
-      - Primary key: `id: Mapped[str] = mapped_column(GUID(), primary_key=True, default=uuid.uuid4)`
+      - Primary key: `id: Mapped[uuid.UUID] = mapped_column(GUID(), primary_key=True, default=uuid.uuid4)`
       - Budget fields: user_id (String 64, indexed), name (String 128), type (String 32), period (String 32)
-      - JSON fields: categories (JSON for category allocations), extra (MutableDict for metadata)
-      - Dates: start_date, end_date (DateTime with timezone)
-      - Timestamps: created_at, updated_at (DateTime with timezone, DB defaults)
+      - JSON fields: categories (MutableDict.as_mutable(JSON) for allocations), extra (MutableDict for metadata)
+      - Dates: start_date, end_date (DateTime with timezone, indexed)
+      - Timestamps: created_at, updated_at (DateTime with timezone, DB-managed with CURRENT_TIMESTAMP)
       - Conditional fields:
         - `${tenant_field}`: `tenant_id: Mapped[str] = mapped_column(String(64), index=True, nullable=False)` if multi-tenancy
         - `${soft_delete_field}`: `deleted_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True, index=True)` if soft deletes
-      - Unique index: `make_unique_sql_indexes()` on (user_id, name) or (tenant_id, user_id, name)
-      - Example CRUD helper: `create_budget_service()` factory function with dedupe logic
-    - [ ] **File: `schemas.py.tmpl`** (~100 lines)
+      - Unique index: `make_unique_sql_indexes()` on (user_id, name) or with tenant_field
+      - Service factory: `create_budget_service()` with dedupe logic, normalization hooks, 409 messages
+    - [x] **File: `schemas.py.tmpl`** (138 lines - exceeded estimate!)
       - Base class: `Timestamped(BaseModel)` with created_at, updated_at
       - Schema classes: `${Entity}Base`, `${Entity}Read`, `${Entity}Create`, `${Entity}Update`
-      - BudgetBase: Core fields (user_id, name, type, period, categories, dates, rollover_enabled)
+      - BudgetBase: Core fields (user_id, name, type, period, categories, dates, rollover_enabled, extra)
       - BudgetRead: Inherits Base + Timestamped, includes id (UUID)
       - BudgetCreate: For POST requests (no id, no timestamps)
       - BudgetUpdate: For PATCH requests (all fields Optional)
-      - Conditional: `${tenant_field}` in Base if multi-tenancy
+      - Conditional: `${tenant_field_create}` and `${tenant_field_update}` for multi-tenancy
       - Config: `ConfigDict(from_attributes=True, populate_by_name=True)` for ORM compatibility
-      - Import enums: `from fin_infra.budgets.models import BudgetType, BudgetPeriod`
-    - [ ] **File: `repository.py.tmpl`** (~200 lines)
+      - Includes FastAPI example in docstring
+    - [x] **File: `repository.py.tmpl`** (305 lines - exceeded estimate!) **[OPTIONAL - apps can use svc-infra SqlRepository]**
       - Class: `${Entity}Repository` with async methods
       - Constructor: `__init__(self, session: AsyncSession)`
       - CRUD methods:
-        - `async def create(self, budget: Budget) -> Budget`
-        - `async def get(self, budget_id: str) -> Optional[Budget]`
-        - `async def list(self, user_id: str, type: Optional[str] = None) -> List[Budget]`
-        - `async def update(self, budget_id: str, updates: dict) -> Budget`
-        - `async def delete(self, budget_id: str) -> None`
+        - `async def create(self, budget_data: Dict[str, Any]) -> BudgetModel`
+        - `async def get(self, budget_id: UUID, tenant_id: Optional[str]) -> Optional[BudgetModel]`
+        - `async def list(self, user_id: str, type: Optional[str], period: Optional[str], active_only: bool, tenant_id: Optional[str]) -> List[BudgetModel]`
+        - `async def update(self, budget_id: UUID, updates: Dict[str, Any], tenant_id: Optional[str]) -> BudgetModel`
+        - `async def delete(self, budget_id: UUID, tenant_id: Optional[str], soft: bool) -> None`
       - Budget-specific methods:
-        - `async def get_by_period(self, user_id: str, start_date: datetime, end_date: datetime) -> List[Budget]`
-        - `async def get_active(self, user_id: str) -> List[Budget]` (current period)
-      - Helper: `def _to_pydantic(self, db_budget: BudgetModel) -> Budget` (SQLAlchemy → Pydantic)
-      - Comprehensive docstrings with usage examples
-      - Conditional: tenant_id filtering if multi-tenancy
-      - Conditional: deleted_at IS NULL filtering if soft deletes
-    - [ ] **File: `README.md`**
-      - Template variable reference table
-      - Customization guide (how to modify templates after generation)
-      - Integration with svc-infra migrations (setup-and-migrate workflow)
-      - Example usage with fin-infra scaffold command
-    - [ ] Manual validation: Copy templates to test project, verify valid Python syntax
-    - [ ] Quality check: Templates render without errors when variables provided
-    - Reference: Phase 3 in presistence-strategy.md (4-6 hours estimated)
+        - `async def get_by_period(self, user_id: str, start_date: datetime, end_date: datetime, tenant_id: Optional[str]) -> List[BudgetModel]`
+        - `async def get_active(self, user_id: str, tenant_id: Optional[str]) -> List[BudgetModel]` (wraps get_by_period with now)
+        - `async def count(self, user_id: str, tenant_id: Optional[str]) -> int`
+      - Helper: `def _to_pydantic(self, db_budget: BudgetModel)` (SQLAlchemy → Pydantic)
+      - Comprehensive docstrings with usage examples for every method
+      - Conditional variables: `${tenant_arg_type}`, `${tenant_arg_val}`, `${tenant_filter}`, `${soft_delete_filter}`, `${soft_delete_logic}`
+      - Full error handling (ValueError for not found, IntegrityError for duplicates)
+      - **Note**: Repository is optional - apps using `add_sql_resources()` get CRUD for free
+    - [x] **File: `README.md`** (600+ lines - far exceeded estimate!)
+      - Complete template variable reference table (3 core + 13 conditional variables)
+      - Usage examples (4 scenarios: basic, multi-tenant, custom filenames, no repository)
+      - **Integration with `add_sql_resources()`** - automatic CRUD with zero code (PRIMARY WORKFLOW)
+      - Customization guide (4 common patterns: custom fields, custom methods, uniqueness changes, validation hooks)
+      - Integration with svc-infra migrations (setup, generate, apply, rollback)
+      - FastAPI integration example using `add_sql_resources()` (recommended) + manual router example (advanced)
+      - Testing examples (unit tests for repository, integration tests for API)
+      - Troubleshooting section (5 common issues with fixes)
+      - Advanced section (custom template modifications)
+    - [x] Manual validation: Templates render successfully (7360-10541 chars per file)
+    - [x] Quality check: ✅ Basic substitution works, ✅ Full substitution works (tenant + soft delete)
+    - [x] Tested with both minimal and full variable sets
+    - Reference: Phase 3 in presistence-strategy.md (Completed in ~3 hours)
 
 3. [ ] **Implement budgets scaffold function** (FILE: `src/fin_infra/scaffold/budgets.py`)
     - [ ] Create `src/fin_infra/scaffold/__init__.py` package marker
@@ -1318,6 +1380,16 @@ fin-infra scaffold net-worth --dest-dir app/models/ [--include-tenant] [--includ
           typer.echo(f"Unknown domain: {domain}")
           raise typer.Exit(1)
       ```
+    - [ ] Add help text with `add_sql_resources()` example:
+      ```python
+      typer.echo("\n✅ Scaffold complete! Next steps:")
+      typer.echo("1. Customize generated models (optional)")
+      typer.echo("2. Run migrations: svc-infra revision -m 'add {domain} table'")
+      typer.echo("3. Wire CRUD with svc-infra:")
+      typer.echo("   from svc_infra.api.fastapi.db.sql import add_sql_resources")
+      typer.echo("   add_sql_resources(app, [SqlResource(model=Budget, prefix='/budgets', ...)])")
+      typer.echo("\nSee generated README.md for full integration guide.")
+      ```
     - [ ] Test all domains via CLI:
       ```bash
       fin-infra scaffold budgets --dest-dir /tmp/test-budgets
@@ -1365,12 +1437,19 @@ fin-infra scaffold net-worth --dest-dir app/models/ [--include-tenant] [--includ
     - [ ] Verify: `grep -r "TODO.*[Dd]atabase" src/fin_infra/` returns only clarified comments
     - Reference: Phase 7 in presistence-strategy.md (1-2 hours estimated)
 
-12. [ ] **Create persistence documentation** (FILE: `docs/persistence.md`)
+12. [ ] **Create persistence documentation** (FILE: `src/fin_infra/docs/persistence.md`)
     - [ ] Section: Why fin-infra is stateless
       - Library vs framework distinction
-      - Comparison with stripe-python, plaid-python (stateless)
+      - Comparison with stripe-python, plaid-python (stateless libraries)
       - Comparison with Django, Rails (stateful frameworks)
       - Benefits: no DB dependency, application flexibility, no version coupling
+    - [ ] Section: Scaffold + `add_sql_resources()` workflow (PRIMARY PATTERN)
+      - Step 1: Generate models with scaffold CLI
+      - Step 2: Run svc-infra migrations
+      - Step 3: Wire CRUD with ONE function call: `add_sql_resources(app, [SqlResource(...)])`
+      - Example: Budget CRUD with zero manual router code
+      - Benefits: Automatic pagination, search, ordering, soft delete
+      - Reference: svc-infra's `src/svc_infra/api/fastapi/db/sql/README.md`
     - [ ] Section: When to use scaffold vs manual templates
       - Scaffold CLI: Quick start, standard patterns, rapid prototyping
       - Manual templates: Full customization, complex schemas, existing codebase integration
@@ -1440,9 +1519,102 @@ fin-infra scaffold net-worth --dest-dir app/models/ [--include-tenant] [--includ
     - [ ] Link to persistence.md in Documentation section
     - Reference: Phase 8 in presistence-strategy.md (included)
 
-14. [ ] **Write comprehensive tests** (FILES: Multiple test files)
+14. [ ] **Document core calculations (what stays in fin-infra)** (FILE: `src/fin_infra/docs/core-vs-scaffold.md`)
+    - [ ] Section: fin-infra's scope - what we provide vs what apps own
+      - **fin-infra provides** (library code):
+        - Provider integrations: Plaid, Alpaca, market data APIs
+        - Financial calculations: NPV, IRR, FIFO/LIFO, compound interest
+        - Budget logic: `detect_overspending()`, `calculate_rollover()`, `compare_periods()`
+        - Goal logic: `check_feasibility()`, `calculate_required_monthly()`, `project_completion_date()`
+        - Net worth logic: `aggregate_accounts()`, `calculate_growth()`, `compute_liquid_net_worth()`
+        - Transaction categorization: ML models, rule-based logic
+        - Recurring detection: Pattern matching, subscription identification
+        - Scaffold CLI: Generate starting code (models/schemas/repository)
+      - **Apps own** (application code):
+        - Database schema: SQLAlchemy models (generated via scaffold)
+        - Persistence layer: Repositories, CRUD (generated or `add_sql_resources()`)
+        - API routes: FastAPI routers (auto-generated via `add_sql_resources()`)
+        - Business rules: Custom validation, workflows, notifications
+        - UI components: React/Vue/etc (fin-infra-web provides examples)
+    - [ ] Section: When to use core functions vs scaffold
+      - **Use core functions when**:
+        - Need financial calculations: `detect_overspending(budgeted, actual)`
+        - Need projections: `check_goal_feasibility(target, income, expenses)`
+        - Need provider integrations: `plaid.get_transactions()`
+        - Storage is app-specific (in-memory, Redis, SQL, Mongo, etc.)
+      - **Use scaffold when**:
+        - Need SQL persistence layer for budgets/goals/net-worth
+        - Want reference implementation following best practices
+        - Building typical CRUD app with FastAPI + SQLAlchemy
+    - [ ] Section: Examples showing core functions decoupled from storage
+      ```python
+      # Example 1: Budget overspending detection (pure function)
+      from fin_infra.budgets.core import detect_overspending
+      
+      # App fetches from ITS OWN database (SQL, Mongo, Redis, whatever)
+      budget = my_app_db.get_budget(user_id="user123", month="2025-11")
+      transactions = my_app_db.get_transactions(user_id="user123", month="2025-11")
+      
+      # fin-infra provides calculation logic
+      overspending = detect_overspending(
+          budgeted=budget["categories"],  # {"Groceries": 600, "Restaurants": 200}
+          actual=sum_by_category(transactions),  # App aggregates its own data
+      )
+      # Returns: {"Restaurants": 50.00}  # Over by $50
+      
+      # Example 2: Goal feasibility check (pure function)
+      from fin_infra.goals.core import check_goal_feasibility
+      
+      # App provides financial data from wherever it stores it
+      goal = my_app_db.get_goal(goal_id="goal123")
+      cashflow = my_app_analytics.get_avg_monthly_cashflow(user_id="user123")
+      
+      # fin-infra provides financial logic
+      feasibility = check_goal_feasibility(
+          target_amount=goal["target_amount"],
+          target_date=goal["target_date"],
+          current_saved=goal["current_amount"],
+          monthly_income=cashflow["income"],
+          monthly_expenses=cashflow["expenses"],
+      )
+      # Returns: {"feasible": False, "required_monthly": 800, "available_monthly": 500}
+      
+      # Example 3: Net worth calculation (pure function)
+      from fin_infra.net_worth.core import calculate_net_worth
+      
+      # App fetches account balances from ITS OWN sources
+      accounts = my_app_db.get_all_accounts(user_id="user123")
+      balances = [acc["balance"] for acc in accounts]
+      
+      # fin-infra provides aggregation logic
+      net_worth = calculate_net_worth(
+          asset_balances=balances["assets"],
+          liability_balances=balances["liabilities"],
+      )
+      ```
+    - [ ] Section: Migration guide - moving from TODO comments to core functions
+      - Before (what TODO comments pointed to):
+        ```python
+        # TODO: Store budgets in SQL database
+        self.budgets = []  # In-memory list
+        ```
+      - After (using scaffold + core functions):
+        ```python
+        # Storage: Use scaffold-generated models + add_sql_resources()
+        # See docs/persistence.md for setup
+        
+        # Core calculations: Use fin-infra pure functions
+        from fin_infra.budgets.core import detect_overspending
+        
+        overspending = detect_overspending(budgeted, actual)
+        ```
+    - [ ] Quality check: Clear distinction between library (fin-infra) and application responsibilities
+    - [ ] Estimated lines: ~300-400 with examples
+    - Reference: Phase 9 in presistence-strategy.md (2-3 hours)
+
+15. [ ] **Write comprehensive tests** (FILES: Multiple test files)
     - [ ] Unit tests (>90% coverage target):
-      - [x] Already created in Tasks 19-24
+      - [x] Already created in Tasks 1-2
       - [ ] Additional edge case tests
       - [ ] Test error handling (invalid domains, missing templates, write failures)
       - [ ] Test conditional field generation (empty strings when flags false)
