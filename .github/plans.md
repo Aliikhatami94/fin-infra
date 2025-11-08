@@ -692,15 +692,15 @@ def add_capability(
 
 **Tasks**:
 
-11. [ ] **Create budgets module structure**
-    - Create `src/fin_infra/budgets/__init__.py`
-    - Create `src/fin_infra/budgets/models.py`
-    - Create `src/fin_infra/budgets/tracker.py`
-    - Create `src/fin_infra/budgets/alerts.py`
-    - Create `src/fin_infra/budgets/templates.py`
-    - Create `src/fin_infra/budgets/ease.py`
-    - Create `src/fin_infra/budgets/add.py`
-    - Verify in coverage analysis: Addresses "Budgets Module (New Domain)" recommendation
+11. [x] **Create budgets module structure**
+    - [x] Create `src/fin_infra/budgets/__init__.py` (lazy imports, comprehensive docstrings)
+    - [x] Create `src/fin_infra/budgets/models.py` (BudgetType, BudgetPeriod enums defined)
+    - [x] Create `src/fin_infra/budgets/tracker.py` (placeholder for Task 13)
+    - [x] Create `src/fin_infra/budgets/alerts.py` (placeholder for Task 14)
+    - [x] Create `src/fin_infra/budgets/templates.py` (placeholder for Task 15)
+    - [x] Create `src/fin_infra/budgets/ease.py` (placeholder for Task 16)
+    - [x] Create `src/fin_infra/budgets/add.py` (placeholder for Task 17)
+    - [x] Verify in coverage analysis: Addresses "Budgets Module (New Domain)" recommendation
 
 12. [ ] **Define Pydantic models** (`src/fin_infra/budgets/models.py`)
     - [ ] `BudgetType` enum: `personal`, `household`, `business`, `project`, `custom`
