@@ -560,16 +560,16 @@ def add_capability(
    - [x] Integration tests: `tests/integration/analytics/test_savings_integration.py` (20 tests passing)
    - Verify in coverage analysis: Closes "Savings Rate Calculation" gap (currently 0% coverage)
 
-5. [ ] **Implement spending insights** (NEW FILE: `src/fin_infra/analytics/spending.py`)
-   - [ ] Function: `analyze_spending(user_id, period="30d", categories=None) -> SpendingInsight`
+5. [x] **Implement spending insights** (NEW FILE: `src/fin_infra/analytics/spending.py`)
+   - [x] Function: `analyze_spending(user_id, period="30d", categories=None) -> SpendingInsight`
      - Top merchants by total spending
      - Category breakdown with totals and percentages
      - Spending trends (increasing, decreasing, stable)
      - Anomaly detection (unusually large transactions, new merchants)
      - Month-over-month comparisons
-   - [ ] Optional: Integrate ai-infra LLM for personalized spending insights
-   - [ ] Unit tests: `tests/unit/analytics/test_spending.py` with various spending patterns
-   - [ ] Integration tests: With categorization module
+   - [ ] Optional: Integrate ai-infra LLM for personalized spending insights (future enhancement)
+   - [x] Unit tests: `tests/unit/analytics/test_spending.py` with various spending patterns (46 tests passing)
+   - [x] Integration tests: `tests/integration/analytics/test_spending_integration.py` (17 tests passing)
    - Verify in coverage analysis: Closes "Spending Insights" gap (currently 0% coverage)
 
 6. [ ] **Implement portfolio analytics** (NEW FILE: `src/fin_infra/analytics/portfolio.py`)
