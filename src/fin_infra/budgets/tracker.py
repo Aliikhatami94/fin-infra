@@ -106,6 +106,8 @@ class BudgetTracker:
         """
         self.db_engine = db_engine
         self.session_maker = async_sessionmaker(db_engine, expire_on_commit=False)
+        # In-memory storage until SQL persistence is implemented (Task 13)
+        self._budgets: dict[str, Budget] = {}
 
     async def create_budget(
         self,
@@ -195,6 +197,9 @@ class BudgetTracker:
         #     session.add(budget)
         #     await session.commit()
         #     await session.refresh(budget)
+        
+        # In-memory storage (Task 13 scope)
+        self._budgets[budget.id] = budget
 
         return budget
 
@@ -222,14 +227,19 @@ class BudgetTracker:
             >>> personal = await tracker.get_budgets("user123", type="personal")
             >>> print(personal[0].name)  # "November 2025"
         """
-        # TODO: Query from SQL database (Task 13 scope: return empty for now)
+        # TODO: Query from SQL database (Task 13 scope: in-memory for now)
         # async with self.session_maker() as session:
         #     stmt = select(Budget).where(Budget.user_id == user_id)
         #     if type:
         #         stmt = stmt.where(Budget.type == type)
         #     result = await session.execute(stmt)
         #     return list(result.scalars().all())
-        return []
+        
+        # In-memory storage (Task 13 scope)
+        budgets = [b for b in self._budgets.values() if b.user_id == user_id]
+        if type:
+            budgets = [b for b in budgets if b.type.value == type]
+        return budgets
 
     async def get_budget(self, budget_id: str) -> Budget:
         """
@@ -249,7 +259,7 @@ class BudgetTracker:
             >>> print(budget.name)  # "November 2025"
             >>> print(budget.categories)  # {"Groceries": 600.00, ...}
         """
-        # TODO: Query from SQL database (Task 13 scope: raise not found for now)
+        # TODO: Query from SQL database (Task 13 scope: in-memory for now)
         # async with self.session_maker() as session:
         #     stmt = select(Budget).where(Budget.id == budget_id)
         #     result = await session.execute(stmt)
@@ -257,7 +267,12 @@ class BudgetTracker:
         #     if not budget:
         #         raise ValueError(f"Budget not found: {budget_id}")
         #     return budget
-        raise ValueError(f"Budget not found: {budget_id}")
+        
+        # In-memory storage (Task 13 scope)
+        budget = self._budgets.get(budget_id)
+        if not budget:
+            raise ValueError(f"Budget not found: {budget_id}")
+        return budget
 
     async def update_budget(
         self,
@@ -293,7 +308,7 @@ class BudgetTracker:
             if any(amount < 0 for amount in updates["categories"].values()):
                 raise ValueError("Category amounts cannot be negative")
 
-        # TODO: Update in SQL database (Task 13 scope: raise not found for now)
+        # TODO: Update in SQL database (Task 13 scope: in-memory for now)
         # async with self.session_maker() as session:
         #     stmt = select(Budget).where(Budget.id == budget_id)
         #     result = await session.execute(stmt)
@@ -308,7 +323,19 @@ class BudgetTracker:
         #     await session.commit()
         #     await session.refresh(budget)
         #     return budget
-        raise ValueError(f"Budget not found: {budget_id}")
+        
+        # In-memory storage (Task 13 scope)
+        budget = self._budgets.get(budget_id)
+        if not budget:
+            raise ValueError(f"Budget not found: {budget_id}")
+        
+        # Update budget fields
+        for key, value in updates.items():
+            if hasattr(budget, key):
+                setattr(budget, key, value)
+        budget.updated_at = datetime.now()
+        
+        return budget
 
     async def delete_budget(self, budget_id: str) -> None:
         """
@@ -327,7 +354,7 @@ class BudgetTracker:
             >>> await tracker.delete_budget("abc-123")
             >>> # Budget and related data deleted
         """
-        # TODO: Delete from SQL database (Task 13 scope: raise not found for now)
+        # TODO: Delete from SQL database (Task 13 scope: in-memory for now)
         # async with self.session_maker() as session:
         #     stmt = select(Budget).where(Budget.id == budget_id)
         #     result = await session.execute(stmt)
@@ -337,7 +364,11 @@ class BudgetTracker:
         #
         #     await session.delete(budget)
         #     await session.commit()
-        raise ValueError(f"Budget not found: {budget_id}")
+        
+        # In-memory storage (Task 13 scope)
+        if budget_id not in self._budgets:
+            raise ValueError(f"Budget not found: {budget_id}")
+        del self._budgets[budget_id]
 
     async def get_budget_progress(
         self,
