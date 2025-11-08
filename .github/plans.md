@@ -893,6 +893,689 @@ def add_capability(
 
 **Module Status**: Core implementation complete (Tasks 13-18 ✅). Optional items remaining: integration/acceptance tests, manual API verification, examples demo. Module ready for initial production use.
 
+---
+
+#### Module 2.5: Persistence Strategy & Scaffold CLI
+
+**Purpose**: Implement template-based persistence scaffolding following svc-infra's pattern. Provides CLI for applications to generate SQLAlchemy models, Pydantic schemas, and repository patterns for budgets, goals, and net-worth domains. Resolves all 11 TODO comments about database persistence.
+
+**Reference Document**: `src/fin_infra/docs/presistence-strategy.md` (comprehensive strategy with 10-phase implementation plan)
+
+**Key Decision**: fin-infra is a LIBRARY (not a framework) and should NOT own database tables. Applications own their persistence layer. fin-infra provides templates + scaffold CLI.
+
+**Scaffold Coverage Summary**:
+
+| Domain | TODOs | Templates | Scaffold Function | Template Location |
+|--------|-------|-----------|-------------------|-------------------|
+| **Budgets** | 5 in `budgets/tracker.py` | models.py.tmpl, schemas.py.tmpl, repository.py.tmpl, README.md | `scaffold_budgets_core()` | `src/fin_infra/budgets/templates/` |
+| **Goals** | 1 in `net_worth/add.py` | models.py.tmpl, schemas.py.tmpl, repository.py.tmpl, README.md | `scaffold_goals_core()` | `src/fin_infra/goals/templates/` |
+| **Net Worth** | 3 in `net_worth/ease.py` (2), `net_worth/add.py` (1) | models.py.tmpl, schemas.py.tmpl, repository.py.tmpl, README.md | `scaffold_net_worth_core()` | `src/fin_infra/net_worth/templates/` |
+| **Recurring** | 1 in `recurring/add.py` | *(No scaffold - transactions owned by app)* | N/A | N/A |
+| **Categorization** | 1 in `categorization/llm_layer.py` | *(No scaffold - use svc-infra.cache)* | N/A | N/A |
+| **TOTAL** | **11 TODOs** | **12 template files** | **3 scaffold functions** | **3 template directories** |
+
+**CLI Commands**:
+```bash
+# Generate persistence for each domain
+fin-infra scaffold budgets --dest-dir app/models/ [--include-tenant] [--include-soft-delete]
+fin-infra scaffold goals --dest-dir app/models/ [--include-tenant] [--include-soft-delete]
+fin-infra scaffold net-worth --dest-dir app/models/ [--include-tenant] [--include-soft-delete]
+```
+
+**Tasks**:
+
+1. [ ] **Create scaffold utilities** (FILE: `src/fin_infra/utils.py`)
+    - [ ] Function: `render_template(tmpl_dir: str, name: str, subs: dict) -> str`
+      - Uses `importlib.resources.files()` to load `.tmpl` files from package
+      - Uses `string.Template.safe_substitute()` for variable substitution
+      - Variables: `${Entity}`, `${table_name}`, `${tenant_field}`, `${soft_delete_field}`, etc.
+      - Example: `render_template("fin_infra.budgets.templates", "models.py.tmpl", {"Entity": "Budget"})`
+    - [ ] Function: `write(dest: Path, content: str, overwrite: bool = False) -> Dict[str, Any]`
+      - Creates parent directories automatically with `dest.parent.mkdir(parents=True, exist_ok=True)`
+      - Checks if file exists, returns `{"action": "skipped", "reason": "exists"}` if `overwrite=False`
+      - Writes file, returns `{"path": str(dest), "action": "wrote"}`
+      - Used by scaffold functions to write generated code
+    - [ ] Function: `ensure_init_py(dir_path: Path, content: str, overwrite: bool) -> Dict[str, Any]`
+      - Wrapper around `write()` for creating `__init__.py` files
+      - Generates re-exports for models, schemas, repository classes
+      - Example content: `from .budget import BudgetModel; __all__ = ["BudgetModel"]`
+    - [ ] Comprehensive docstrings with examples for all functions
+    - [ ] Full type annotations (no mypy errors)
+    - [ ] Unit tests: `tests/unit/test_utils.py` (15+ tests)
+      - Test template loading from package resources
+      - Test variable substitution (simple + complex)
+      - Test missing variables (safe_substitute behavior)
+      - Test file writing (success, skip existing, overwrite)
+      - Test parent directory creation
+      - Test __init__.py generation
+    - [ ] Quality checks: `mypy src/fin_infra/utils.py` passes, `ruff check` passes
+    - Reference: Phase 2 in presistence-strategy.md (2-4 hours estimated)
+
+2. [ ] **Create budgets scaffold templates** (DIRECTORY: `src/fin_infra/budgets/templates/`)
+    - [ ] Create directory structure:
+      ```
+      src/fin_infra/budgets/templates/
+      ├── models.py.tmpl           # SQLAlchemy model
+      ├── schemas.py.tmpl          # Pydantic schemas
+      ├── repository.py.tmpl       # Repository pattern
+      └── README.md                # Template usage guide
+      ```
+    - [ ] **File: `models.py.tmpl`** (~150 lines)
+      - SQLAlchemy model: `class ${Entity}(ModelBase)` with `__tablename__ = "${table_name}"`
+      - Uses `from svc_infra.db.sql.base import ModelBase` for Alembic migration discovery
+      - Primary key: `id: Mapped[str] = mapped_column(GUID(), primary_key=True, default=uuid.uuid4)`
+      - Budget fields: user_id (String 64, indexed), name (String 128), type (String 32), period (String 32)
+      - JSON fields: categories (JSON for category allocations), extra (MutableDict for metadata)
+      - Dates: start_date, end_date (DateTime with timezone)
+      - Timestamps: created_at, updated_at (DateTime with timezone, DB defaults)
+      - Conditional fields:
+        - `${tenant_field}`: `tenant_id: Mapped[str] = mapped_column(String(64), index=True, nullable=False)` if multi-tenancy
+        - `${soft_delete_field}`: `deleted_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True, index=True)` if soft deletes
+      - Unique index: `make_unique_sql_indexes()` on (user_id, name) or (tenant_id, user_id, name)
+      - Example CRUD helper: `create_budget_service()` factory function with dedupe logic
+    - [ ] **File: `schemas.py.tmpl`** (~100 lines)
+      - Base class: `Timestamped(BaseModel)` with created_at, updated_at
+      - Schema classes: `${Entity}Base`, `${Entity}Read`, `${Entity}Create`, `${Entity}Update`
+      - BudgetBase: Core fields (user_id, name, type, period, categories, dates, rollover_enabled)
+      - BudgetRead: Inherits Base + Timestamped, includes id (UUID)
+      - BudgetCreate: For POST requests (no id, no timestamps)
+      - BudgetUpdate: For PATCH requests (all fields Optional)
+      - Conditional: `${tenant_field}` in Base if multi-tenancy
+      - Config: `ConfigDict(from_attributes=True, populate_by_name=True)` for ORM compatibility
+      - Import enums: `from fin_infra.budgets.models import BudgetType, BudgetPeriod`
+    - [ ] **File: `repository.py.tmpl`** (~200 lines)
+      - Class: `${Entity}Repository` with async methods
+      - Constructor: `__init__(self, session: AsyncSession)`
+      - CRUD methods:
+        - `async def create(self, budget: Budget) -> Budget`
+        - `async def get(self, budget_id: str) -> Optional[Budget]`
+        - `async def list(self, user_id: str, type: Optional[str] = None) -> List[Budget]`
+        - `async def update(self, budget_id: str, updates: dict) -> Budget`
+        - `async def delete(self, budget_id: str) -> None`
+      - Budget-specific methods:
+        - `async def get_by_period(self, user_id: str, start_date: datetime, end_date: datetime) -> List[Budget]`
+        - `async def get_active(self, user_id: str) -> List[Budget]` (current period)
+      - Helper: `def _to_pydantic(self, db_budget: BudgetModel) -> Budget` (SQLAlchemy → Pydantic)
+      - Comprehensive docstrings with usage examples
+      - Conditional: tenant_id filtering if multi-tenancy
+      - Conditional: deleted_at IS NULL filtering if soft deletes
+    - [ ] **File: `README.md`**
+      - Template variable reference table
+      - Customization guide (how to modify templates after generation)
+      - Integration with svc-infra migrations (setup-and-migrate workflow)
+      - Example usage with fin-infra scaffold command
+    - [ ] Manual validation: Copy templates to test project, verify valid Python syntax
+    - [ ] Quality check: Templates render without errors when variables provided
+    - Reference: Phase 3 in presistence-strategy.md (4-6 hours estimated)
+
+3. [ ] **Implement budgets scaffold function** (FILE: `src/fin_infra/scaffold/budgets.py`)
+    - [ ] Create `src/fin_infra/scaffold/__init__.py` package marker
+    - [ ] Function: `scaffold_budgets_core(dest_dir, include_tenant, include_soft_delete, with_repository, overwrite, models_filename, schemas_filename, repository_filename) -> Dict[str, Any]`
+    - [ ] Template variable generation:
+      ```python
+      subs = {
+          "Entity": "Budget",
+          "entity": "budget",
+          "table_name": "budgets",
+          "tenant_field": _tenant_field() if include_tenant else "",
+          "soft_delete_field": _soft_delete_field() if include_soft_delete else "",
+          "tenant_arg": ", tenant_id: str" if include_tenant else "",
+          "tenant_default": ", tenant_id=None" if include_tenant else "",
+      }
+      ```
+    - [ ] Template loading: `render_template("fin_infra.budgets.templates", "models.py.tmpl", subs)`
+    - [ ] File writing sequence:
+      1. Models: `write(dest_dir / models_filename, models_content, overwrite)`
+      2. Schemas: `write(dest_dir / schemas_filename, schemas_content, overwrite)`
+      3. Repository (optional): `write(dest_dir / repository_filename, repo_content, overwrite)` if `with_repository=True`
+      4. __init__.py: `ensure_init_py(dest_dir, init_content, overwrite)` with re-exports
+    - [ ] Default filenames: budget.py, budget_schemas.py, budget_repository.py
+    - [ ] Return dict: `{"files": [{"path": str, "action": "wrote|skipped", "reason": str}]}`
+    - [ ] Helper: `_tenant_field() -> str` returns field definition or empty string
+    - [ ] Helper: `_soft_delete_field() -> str` returns field definition or empty string
+    - [ ] Helper: `_generate_init_content(models_file, schemas_file, repo_file) -> str` generates __init__.py with re-exports
+    - [ ] Unit tests: `tests/unit/scaffold/test_budgets_scaffold.py` (20+ tests)
+      - Test basic scaffold (no flags)
+      - Test with tenant_id flag
+      - Test with soft_delete flag
+      - Test with both flags
+      - Test without repository
+      - Test custom filenames
+      - Test overwrite protection (should skip existing files)
+      - Test overwrite=True (should replace existing files)
+      - Test __init__.py generation
+      - Test return dict structure
+    - [ ] Quality checks: mypy passes, ruff passes, all tests pass
+    - Reference: Phase 4 in presistence-strategy.md (2-3 hours estimated)
+
+4. [ ] **Create scaffold CLI commands** (FILE: `src/fin_infra/cli/cmds/scaffold_cmds.py`)
+    - [ ] Import Typer and click: `import typer; import click`
+    - [ ] Command: `cmd_scaffold(domain, dest_dir, include_tenant, include_soft_delete, with_repository, overwrite, models_filename, schemas_filename, repository_filename)`
+    - [ ] Parameters:
+      - `domain: str = typer.Argument(..., help="Domain to scaffold (budgets, goals, net_worth)", click_type=click.Choice(["budgets", "goals", "net_worth"]))`
+      - `dest_dir: Path = typer.Option(..., "--dest-dir", resolve_path=True, help="Destination directory for generated files")`
+      - `include_tenant: bool = typer.Option(False, "--include-tenant/--no-include-tenant", help="Add tenant_id field for multi-tenancy")`
+      - `include_soft_delete: bool = typer.Option(False, "--include-soft-delete/--no-include-soft-delete", help="Add deleted_at field for soft deletes")`
+      - `with_repository: bool = typer.Option(True, "--with-repository/--no-with-repository", help="Generate repository pattern implementation")`
+      - `overwrite: bool = typer.Option(False, "--overwrite/--no-overwrite", help="Overwrite existing files")`
+      - `models_filename: Optional[str] = typer.Option(None, "--models-filename", help="Custom filename for models (default: {domain}.py)")`
+      - `schemas_filename: Optional[str] = typer.Option(None, "--schemas-filename", help="Custom filename for schemas (default: {domain}_schemas.py)")`
+      - `repository_filename: Optional[str] = typer.Option(None, "--repository-filename", help="Custom filename for repository (default: {domain}_repository.py)")`
+    - [ ] Implementation:
+      ```python
+      if domain == "budgets":
+          from fin_infra.scaffold.budgets import scaffold_budgets_core
+          res = scaffold_budgets_core(...)
+      elif domain == "goals":
+          from fin_infra.scaffold.goals import scaffold_goals_core
+          res = scaffold_goals_core(...)
+      elif domain == "net_worth":
+          from fin_infra.scaffold.net_worth import scaffold_net_worth_core
+          res = scaffold_net_worth_core(...)
+      ```
+    - [ ] Result display:
+      ```python
+      for file_info in res.get("files", []):
+          if file_info["action"] == "wrote":
+              typer.echo(f"✓ Created: {file_info['path']}")
+          elif file_info["action"] == "skipped":
+              typer.echo(f"⊘ Skipped: {file_info['path']} ({file_info['reason']})")
+      ```
+    - [ ] Function: `register(app: typer.Typer) -> None` to attach command
+    - [ ] Comprehensive docstring with usage examples
+    - [ ] CLI tests: `tests/unit/cli/test_scaffold_cmds.py` (10+ tests)
+      - Test command registration
+      - Test with valid domain
+      - Test with invalid domain (should fail)
+      - Test with all flags
+      - Test result display
+    - [ ] Quality checks: mypy passes, ruff passes, all tests pass
+    - Reference: Phase 5 in presistence-strategy.md (2-3 hours estimated)
+
+5. [ ] **Register scaffold CLI in main** (FILE: `src/fin_infra/cli/__init__.py` or `__main__.py`)
+    - [ ] Import scaffold commands: `from fin_infra.cli.cmds import scaffold_cmds`
+    - [ ] Register with main app: `scaffold_cmds.register(app)`
+    - [ ] Test CLI help: `fin-infra scaffold --help` shows command
+    - [ ] Test CLI invocation: `fin-infra scaffold budgets --dest-dir /tmp/test`
+    - [ ] Verify generated files:
+      ```bash
+      ls -la /tmp/test/
+      # Should show: budget.py, budget_schemas.py, budget_repository.py, __init__.py
+      python -m py_compile /tmp/test/*.py  # Verify no syntax errors
+      mypy /tmp/test/  # Verify type safety (may need svc-infra imports available)
+      ```
+    - [ ] Integration test: Full scaffold → migrate workflow
+      1. Scaffold budgets: `fin-infra scaffold budgets --dest-dir app/models/ --include-tenant`
+      2. Verify files exist and are valid Python
+      3. Import models: `from app.models.budget import BudgetModel`
+      4. Run svc-infra migration: `svc-infra revision -m "add budgets table"`
+      5. Verify migration file created in `migrations/versions/`
+      6. Apply migration: `svc-infra upgrade head`
+      7. Verify table exists in database
+    - [ ] Quality check: CLI registered and functional
+    - Reference: Phase 5 in presistence-strategy.md (included in Task 22)
+
+6. [ ] **Create goals scaffold templates** (DIRECTORY: `src/fin_infra/goals/templates/`)
+    - [ ] Create directory structure:
+      ```
+      src/fin_infra/goals/templates/
+      ├── models.py.tmpl           # SQLAlchemy model
+      ├── schemas.py.tmpl          # Pydantic schemas
+      ├── repository.py.tmpl       # Repository pattern
+      └── README.md                # Template usage guide
+      ```
+    - [ ] **File: `models.py.tmpl`** (~120 lines)
+      - SQLAlchemy model: `class ${Entity}(ModelBase)` with `__tablename__ = "${table_name}"`
+      - Uses `from svc_infra.db.sql.base import ModelBase` for Alembic migration discovery
+      - Primary key: `id: Mapped[str] = mapped_column(GUID(), primary_key=True, default=uuid.uuid4)`
+      - Goal fields:
+        - user_id (String 64, indexed, nullable=False)
+        - name (String 128, nullable=False)
+        - description (Text, nullable=True)
+        - target_amount (Numeric(15, 2), nullable=False) - financial goal amount
+        - current_amount (Numeric(15, 2), default=0.00) - progress toward goal
+        - target_date (DateTime with timezone, nullable=False) - deadline
+        - status (String 32, nullable=False) - active, achieved, abandoned, paused
+        - priority (Integer, default=1) - goal importance ranking
+        - category (String 64, nullable=True) - emergency_fund, retirement, vacation, etc.
+      - JSON fields: metadata (MutableDict for extra data), milestones (JSON for progress tracking)
+      - Timestamps: created_at, updated_at (DateTime with timezone, DB defaults)
+      - Conditional fields: `${tenant_field}` for multi-tenancy, `${soft_delete_field}` for soft deletes
+      - Unique index: `make_unique_sql_indexes()` on (user_id, name) or (tenant_id, user_id, name)
+      - Computed fields: percent_complete (current_amount / target_amount * 100)
+    - [ ] **File: `schemas.py.tmpl`** (~90 lines)
+      - Base class: `Timestamped(BaseModel)` with created_at, updated_at
+      - Schema classes: `${Entity}Base`, `${Entity}Read`, `${Entity}Create`, `${Entity}Update`
+      - GoalBase: Core fields (user_id, name, target_amount, current_amount, target_date, status, priority, category)
+      - GoalRead: Inherits Base + Timestamped, includes id (UUID), percent_complete (computed)
+      - GoalCreate: For POST requests (no id, no timestamps, no percent_complete)
+      - GoalUpdate: For PATCH requests (all fields Optional except id)
+      - Conditional: `${tenant_field}` in Base if multi-tenancy
+      - Config: `ConfigDict(from_attributes=True, populate_by_name=True)`
+      - Import enums: `from fin_infra.net_worth.goals import GoalStatus` (if exists, or define in template)
+    - [ ] **File: `repository.py.tmpl`** (~180 lines)
+      - Class: `${Entity}Repository` with async methods
+      - Constructor: `__init__(self, session: AsyncSession)`
+      - CRUD methods:
+        - `async def create(self, goal: Goal) -> Goal`
+        - `async def get(self, goal_id: str) -> Optional[Goal]`
+        - `async def list(self, user_id: str, status: Optional[str] = None, category: Optional[str] = None) -> List[Goal]`
+        - `async def update(self, goal_id: str, updates: dict) -> Goal`
+        - `async def delete(self, goal_id: str) -> None`
+      - Goal-specific methods:
+        - `async def get_active(self, user_id: str) -> List[Goal]` (status = 'active')
+        - `async def get_by_status(self, user_id: str, status: str) -> List[Goal]`
+        - `async def get_by_priority(self, user_id: str, min_priority: int = 1) -> List[Goal]`
+        - `async def update_progress(self, goal_id: str, new_amount: Decimal) -> Goal` (update current_amount)
+      - Helper: `def _to_pydantic(self, db_goal: GoalModel) -> Goal` (SQLAlchemy → Pydantic)
+      - Comprehensive docstrings with usage examples
+      - Conditional: tenant_id filtering if multi-tenancy
+      - Conditional: deleted_at IS NULL filtering if soft deletes
+    - [ ] **File: `README.md`**
+      - Template variable reference table
+      - Goal-specific customization guide (milestones, progress tracking)
+      - Integration with svc-infra migrations
+      - Example: Personal finance goal tracking
+      - Example: Retirement planning with multiple goals
+    - [ ] Manual validation: Copy templates to test project, verify valid Python syntax
+    - [ ] Quality check: Templates render without errors when variables provided
+    - Reference: Phase 6 in presistence-strategy.md (2-3 hours estimated for goals)
+
+7. [ ] **Create net-worth scaffold templates** (DIRECTORY: `src/fin_infra/net_worth/templates/`)
+    - [ ] Create directory structure:
+      ```
+      src/fin_infra/net_worth/templates/
+      ├── models.py.tmpl           # SQLAlchemy model
+      ├── schemas.py.tmpl          # Pydantic schemas
+      ├── repository.py.tmpl       # Repository pattern
+      └── README.md                # Template usage guide
+      ```
+    - [ ] **File: `models.py.tmpl`** (~130 lines)
+      - SQLAlchemy model: `class ${Entity}(ModelBase)` with `__tablename__ = "${table_name}"`
+      - Uses `from svc_infra.db.sql.base import ModelBase` for Alembic migration discovery
+      - Primary key: `id: Mapped[str] = mapped_column(GUID(), primary_key=True, default=uuid.uuid4)`
+      - Net Worth Snapshot fields:
+        - user_id (String 64, indexed, nullable=False)
+        - snapshot_date (DateTime with timezone, nullable=False, indexed) - when snapshot was taken
+        - total_assets (Numeric(15, 2), nullable=False, default=0.00) - sum of all assets
+        - total_liabilities (Numeric(15, 2), nullable=False, default=0.00) - sum of all debts
+        - net_worth (Numeric(15, 2), nullable=False) - total_assets - total_liabilities (computed or stored)
+        - liquid_net_worth (Numeric(15, 2), nullable=True) - excluding illiquid assets (real estate, etc.)
+      - JSON fields:
+        - accounts_data (JSON) - snapshot of all account balances at point in time
+        - asset_breakdown (JSON) - categorized assets (cash, investments, real_estate, etc.)
+        - liability_breakdown (JSON) - categorized liabilities (credit_cards, loans, mortgage, etc.)
+        - metadata (MutableDict) - additional snapshot metadata
+      - Timestamps: created_at (DateTime with timezone, DB default) - when record was created
+      - Conditional fields: `${tenant_field}` for multi-tenancy, `${soft_delete_field}` for soft deletes
+      - Unique index: (user_id, snapshot_date) or (tenant_id, user_id, snapshot_date) - one snapshot per day per user
+      - Check constraint: net_worth = total_assets - total_liabilities (if DB supports)
+    - [ ] **File: `schemas.py.tmpl`** (~80 lines)
+      - Base class: `Timestamped(BaseModel)` with created_at
+      - Schema classes: `${Entity}Base`, `${Entity}Read`, `${Entity}Create`
+      - NetWorthSnapshotBase: Core fields (user_id, snapshot_date, total_assets, total_liabilities, net_worth, accounts_data, breakdowns)
+      - NetWorthSnapshotRead: Inherits Base + Timestamped, includes id (UUID)
+      - NetWorthSnapshotCreate: For POST requests (no id, no created_at)
+      - No Update schema: Snapshots are immutable (delete and recreate instead)
+      - Conditional: `${tenant_field}` in Base if multi-tenancy
+      - Config: `ConfigDict(from_attributes=True, populate_by_name=True)`
+      - Validators: Ensure net_worth = total_assets - total_liabilities
+    - [ ] **File: `repository.py.tmpl`** (~160 lines)
+      - Class: `${Entity}Repository` with async methods
+      - Constructor: `__init__(self, session: AsyncSession)`
+      - CRUD methods (Note: No update, snapshots are immutable):
+        - `async def create(self, snapshot: NetWorthSnapshot) -> NetWorthSnapshot`
+        - `async def get(self, snapshot_id: str) -> Optional[NetWorthSnapshot]`
+        - `async def list(self, user_id: str, start_date: Optional[datetime] = None, end_date: Optional[datetime] = None) -> List[NetWorthSnapshot]`
+        - `async def delete(self, snapshot_id: str) -> None` (only for corrections)
+      - Net Worth-specific methods:
+        - `async def get_latest(self, user_id: str) -> Optional[NetWorthSnapshot]` (most recent snapshot)
+        - `async def get_by_date(self, user_id: str, snapshot_date: date) -> Optional[NetWorthSnapshot]` (exact date)
+        - `async def get_by_date_range(self, user_id: str, start_date: date, end_date: date) -> List[NetWorthSnapshot]` (time series)
+        - `async def get_trend(self, user_id: str, months: int = 12) -> List[NetWorthSnapshot]` (last N months)
+        - `async def calculate_growth(self, user_id: str, start_date: date, end_date: date) -> dict` (growth metrics)
+      - Helper: `def _to_pydantic(self, db_snapshot: NetWorthSnapshotModel) -> NetWorthSnapshot` (SQLAlchemy → Pydantic)
+      - Comprehensive docstrings with usage examples
+      - Conditional: tenant_id filtering if multi-tenancy
+      - Conditional: deleted_at IS NULL filtering if soft deletes
+    - [ ] **File: `README.md`**
+      - Template variable reference table
+      - Net worth snapshot patterns (daily, weekly, monthly)
+      - Time series querying examples
+      - Growth calculation patterns
+      - Integration with fin_infra.net_worth.tracker
+      - Example: Personal finance dashboard with net worth tracking
+    - [ ] Manual validation: Copy templates to test project, verify valid Python syntax
+    - [ ] Quality check: Templates render without errors when variables provided
+    - Reference: Phase 6 in presistence-strategy.md (2-3 hours estimated for net-worth)
+
+8. [ ] **Implement goals scaffold function** (FILE: `src/fin_infra/scaffold/goals.py`)
+    - [ ] Function: `scaffold_goals_core(dest_dir, include_tenant, include_soft_delete, with_repository, overwrite, models_filename, schemas_filename, repository_filename) -> Dict[str, Any]`
+    - [ ] Template variable generation:
+      ```python
+      subs = {
+          "Entity": "Goal",
+          "entity": "goal",
+          "table_name": "goals",
+          "tenant_field": _tenant_field() if include_tenant else "",
+          "soft_delete_field": _soft_delete_field() if include_soft_delete else "",
+      }
+      ```
+    - [ ] Template loading: `render_template("fin_infra.goals.templates", "models.py.tmpl", subs)`
+    - [ ] File writing: models, schemas, repository (optional), __init__.py
+    - [ ] Default filenames: goal.py, goal_schemas.py, goal_repository.py
+    - [ ] Return dict: `{"files": [{"path": str, "action": "wrote|skipped"}]}`
+    - [ ] Unit tests: `tests/unit/scaffold/test_goals_scaffold.py` (20+ tests)
+      - Test basic scaffold
+      - Test with tenant_id flag
+      - Test with soft_delete flag
+      - Test without repository
+      - Test custom filenames
+      - Test overwrite protection
+    - [ ] Quality checks: mypy passes, ruff passes, all tests pass
+    - Reference: Phase 6 in presistence-strategy.md (1-2 hours estimated)
+
+9. [ ] **Implement net-worth scaffold function** (FILE: `src/fin_infra/scaffold/net_worth.py`)
+    - [ ] Function: `scaffold_net_worth_core(dest_dir, include_tenant, include_soft_delete, with_repository, overwrite, models_filename, schemas_filename, repository_filename) -> Dict[str, Any]`
+    - [ ] Template variable generation:
+      ```python
+      subs = {
+          "Entity": "NetWorthSnapshot",
+          "entity": "net_worth_snapshot",
+          "table_name": "net_worth_snapshots",
+          "tenant_field": _tenant_field() if include_tenant else "",
+          "soft_delete_field": _soft_delete_field() if include_soft_delete else "",
+      }
+      ```
+    - [ ] Template loading: `render_template("fin_infra.net_worth.templates", "models.py.tmpl", subs)`
+    - [ ] File writing: models, schemas, repository (optional), __init__.py
+    - [ ] Default filenames: net_worth_snapshot.py, net_worth_snapshot_schemas.py, net_worth_snapshot_repository.py
+    - [ ] Return dict: `{"files": [{"path": str, "action": "wrote|skipped"}]}`
+    - [ ] Unit tests: `tests/unit/scaffold/test_net_worth_scaffold.py` (20+ tests)
+      - Test basic scaffold
+      - Test with tenant_id flag
+      - Test with soft_delete flag
+      - Test without repository
+      - Test custom filenames
+      - Test overwrite protection
+      - Test immutable snapshot pattern (no Update schema)
+    - [ ] Quality checks: mypy passes, ruff passes, all tests pass
+    - Reference: Phase 6 in presistence-strategy.md (1-2 hours estimated)
+
+10. [ ] **Update CLI to support all domains** (FILE: `src/fin_infra/cli/cmds/scaffold_cmds.py`)
+    - [ ] Update `cmd_scaffold()` to dispatch to all three scaffold functions:
+      ```python
+      if domain == "budgets":
+          from fin_infra.scaffold.budgets import scaffold_budgets_core
+          res = scaffold_budgets_core(...)
+      elif domain == "goals":
+          from fin_infra.scaffold.goals import scaffold_goals_core
+          res = scaffold_goals_core(...)
+      elif domain == "net_worth":
+          from fin_infra.scaffold.net_worth import scaffold_net_worth_core
+          res = scaffold_net_worth_core(...)
+      else:
+          typer.echo(f"Unknown domain: {domain}")
+          raise typer.Exit(1)
+      ```
+    - [ ] Test all domains via CLI:
+      ```bash
+      fin-infra scaffold budgets --dest-dir /tmp/test-budgets
+      fin-infra scaffold goals --dest-dir /tmp/test-goals
+      fin-infra scaffold net-worth --dest-dir /tmp/test-networth
+      ```
+    - [ ] Verify generated files for all domains:
+      - Budgets: budget.py, budget_schemas.py, budget_repository.py, __init__.py
+      - Goals: goal.py, goal_schemas.py, goal_repository.py, __init__.py
+      - Net Worth: net_worth_snapshot.py, net_worth_snapshot_schemas.py, net_worth_snapshot_repository.py, __init__.py
+    - [ ] Quality checks: All domains generate valid Python, pass mypy, no syntax errors
+    - Reference: Phase 6 in presistence-strategy.md (included in Tasks 8-9)
+
+11. [ ] **Update TODO comments** (FILES: Multiple)
+    - [ ] **Budgets**: `src/fin_infra/budgets/tracker.py` (6 TODOs)
+      ```python
+      # OLD: # TODO: Store in SQL database
+      # NEW:
+      # Persistence: Applications own database schema (fin-infra is a stateless library).
+      # Generate models/schemas/repository: fin-infra scaffold budgets --dest-dir app/models/
+      # See docs/persistence.md for full guide.
+      # In-memory storage used for testing/examples.
+      ```
+    - [ ] **Net Worth**: `src/fin_infra/net_worth/ease.py` (2 TODOs)
+      ```python
+      # Persistence: fin-infra scaffold net-worth --dest-dir app/models/
+      # See docs/persistence.md for snapshot storage patterns.
+      ```
+    - [ ] **Goals**: `src/fin_infra/goals/add.py` (1 TODO)
+      ```python
+      # Persistence: fin-infra scaffold goals --dest-dir app/models/
+      ```
+    - [ ] **Categorization**: `src/fin_infra/categorization/llm_layer.py` (1 TODO)
+      ```python
+      # Cost tracking: Use svc-infra.cache (Redis), not database persistence.
+      # from svc_infra.cache import cache_write
+      # See docs/persistence.md for LLM cost tracking patterns.
+      ```
+    - [ ] **Recurring**: `src/fin_infra/recurring/add.py` (1 TODO)
+      ```python
+      # Persistence: Applications own transaction storage.
+      # Use fin-infra scaffold to generate models if needed.
+      ```
+    - [ ] Verify: `grep -r "TODO.*[Ss]tore.*SQL" src/fin_infra/` returns no results
+    - [ ] Verify: `grep -r "TODO.*[Dd]atabase" src/fin_infra/` returns only clarified comments
+    - Reference: Phase 7 in presistence-strategy.md (1-2 hours estimated)
+
+12. [ ] **Create persistence documentation** (FILE: `docs/persistence.md`)
+    - [ ] Section: Why fin-infra is stateless
+      - Library vs framework distinction
+      - Comparison with stripe-python, plaid-python (stateless)
+      - Comparison with Django, Rails (stateful frameworks)
+      - Benefits: no DB dependency, application flexibility, no version coupling
+    - [ ] Section: When to use scaffold vs manual templates
+      - Scaffold CLI: Quick start, standard patterns, rapid prototyping
+      - Manual templates: Full customization, complex schemas, existing codebase integration
+    - [ ] Section: Step-by-step scaffold guide
+      1. Choose domain (budgets, goals, net-worth)
+      2. Run scaffold command with flags
+      3. Review generated files
+      4. Customize for your needs (add fields, indexes, validation)
+      5. Create Alembic migration
+      6. Apply migration
+      7. Use repository in application
+    - [ ] Section: Integration with svc-infra ModelBase and Alembic
+      - ModelBase discovery mechanism
+      - Alembic env.py configuration
+      - DISCOVER_PACKAGES environment variable
+      - Migration workflow: `svc-infra revision -m "..."` → `svc-infra upgrade head`
+    - [ ] Section: Multi-tenancy patterns
+      - When to use `--include-tenant` flag
+      - Tenant isolation strategies
+      - Row-level security (RLS) with PostgreSQL
+      - Example: Multi-tenant budget application
+    - [ ] Section: Soft delete patterns
+      - When to use `--include-soft-delete` flag
+      - Query filtering (deleted_at IS NULL)
+      - Hard delete vs soft delete tradeoffs
+      - Example: Recoverable budget deletion
+    - [ ] Section: Testing strategies
+      - Unit tests with in-memory storage (BudgetTracker pattern)
+      - Integration tests with test database (aiosqlite)
+      - Acceptance tests with real database (PostgreSQL)
+      - Fixture patterns for repositories
+    - [ ] Section: Example workflows
+      - Personal finance app (single-tenant, PostgreSQL)
+      - SaaS budgeting platform (multi-tenant, PostgreSQL with RLS)
+      - Wealth management app (multi-tenant, soft deletes, MySQL)
+    - [ ] Section: Troubleshooting
+      - Common scaffold errors
+      - Migration conflicts
+      - Type checking issues with generated code
+      - Performance optimization (indexes, queries)
+    - [ ] Quality check: ~500-800 lines, comprehensive guide with code examples
+    - Reference: Phase 8 in presistence-strategy.md (4-6 hours estimated)
+
+13. [ ] **Update main README** (FILE: `README.md`)
+    - [ ] Add "Persistence" section after "Quick Start"
+      ```markdown
+      ## Persistence
+      
+      fin-infra is a **stateless library** - applications own their database schema.
+      
+      Generate models, schemas, and repositories for your application:
+      
+      ```bash
+      # Scaffold budgets with multi-tenancy
+      fin-infra scaffold budgets --dest-dir app/models/ --include-tenant
+      
+      # Scaffold goals
+      fin-infra scaffold goals --dest-dir app/models/
+      
+      # Scaffold net-worth snapshots
+      fin-infra scaffold net-worth --dest-dir app/models/ --include-soft-delete
+      ```
+      
+      See [docs/persistence.md](docs/persistence.md) for full guide.
+      ```
+    - [ ] Link to presistence-strategy.md in Architecture section
+    - [ ] Link to persistence.md in Documentation section
+    - Reference: Phase 8 in presistence-strategy.md (included)
+
+14. [ ] **Write comprehensive tests** (FILES: Multiple test files)
+    - [ ] Unit tests (>90% coverage target):
+      - [x] Already created in Tasks 19-24
+      - [ ] Additional edge case tests
+      - [ ] Test error handling (invalid domains, missing templates, write failures)
+      - [ ] Test conditional field generation (empty strings when flags false)
+    - [ ] Integration tests:
+      - [ ] `tests/integration/test_scaffold_workflow.py`
+        - Test full scaffold → compile → mypy workflow
+        - Test scaffold → import → instantiate classes
+        - Test scaffold with all flag combinations
+      - [ ] `tests/integration/test_scaffold_database.py`
+        - Test scaffold → Alembic migration → table creation
+        - Test CRUD operations with generated repository
+        - Test multi-tenancy with tenant_id filtering
+        - Test soft deletes with deleted_at filtering
+    - [ ] Acceptance tests:
+      - [ ] `tests/acceptance/test_scaffold_acceptance.py`
+        - Test scaffold → migrate → CRUD with real PostgreSQL
+        - Test with different database drivers (asyncpg, aiosqlite, aiomysql)
+        - Test generated code integrates with FastAPI app
+    - [ ] CLI tests:
+      - [ ] Test help text: `fin-infra scaffold --help`
+      - [ ] Test invalid domain: `fin-infra scaffold invalid --dest-dir /tmp`
+      - [ ] Test all valid domains: budgets, goals, net-worth
+    - [ ] Coverage report:
+      ```bash
+      pytest tests/unit/scaffold/ -q --cov=fin_infra.scaffold --cov-report=term-missing
+      # Target: >90% coverage
+      ```
+    - [ ] Quality gate: All tests pass, coverage >90%
+    - Reference: Phase 9 in presistence-strategy.md (2-3 hours estimated)
+
+15. [ ] **Quality gates and final verification** (Multiple checks)
+    - [ ] Code quality:
+      - [ ] `ruff format src/fin_infra/scaffold/` passes
+      - [ ] `ruff format src/fin_infra/utils.py` passes
+      - [ ] `ruff check src/fin_infra/scaffold/` passes (no errors)
+      - [ ] `ruff check src/fin_infra/utils.py` passes (no errors)
+      - [ ] `mypy src/fin_infra/scaffold/` passes (no type errors)
+      - [ ] `mypy src/fin_infra/utils.py` passes (no type errors)
+    - [ ] Test coverage:
+      - [ ] Unit tests: `pytest tests/unit/scaffold/ -q` (60+ tests pass)
+      - [ ] Integration tests: `pytest tests/integration/test_scaffold_*.py -q` (15+ tests pass)
+      - [ ] Acceptance tests: `pytest tests/acceptance/test_scaffold_*.py -q -m acceptance` (10+ tests pass)
+      - [ ] Total: 85+ tests, >90% coverage
+    - [ ] Manual verification:
+      - [ ] Scaffold budgets: `fin-infra scaffold budgets --dest-dir /tmp/verify-budgets --include-tenant --include-soft-delete`
+      - [ ] Verify files: `ls -la /tmp/verify-budgets/` shows 4 files
+      - [ ] Compile: `python -m py_compile /tmp/verify-budgets/*.py` succeeds
+      - [ ] Type check: `cd /tmp/verify-budgets && mypy *.py` passes (after installing svc-infra)
+      - [ ] Import test: `python -c "from tmp.verify_budgets.budget import BudgetModel"` succeeds
+    - [ ] Documentation check:
+      - [ ] `docs/persistence.md` exists and is comprehensive (>500 lines)
+      - [ ] `src/fin_infra/docs/presistence-strategy.md` is up-to-date
+      - [ ] README.md updated with persistence section
+      - [ ] All 11 TODO comments updated with clear guidance
+    - [ ] CLI functionality:
+      - [ ] `fin-infra --help` shows scaffold command
+      - [ ] `fin-infra scaffold --help` shows all options
+      - [ ] `fin-infra scaffold budgets --help` shows usage
+      - [ ] All three domains work: budgets, goals, net-worth
+    - Reference: Phase 9-10 in presistence-strategy.md
+
+**Module 2.5 Completion Checklist** (MANDATORY):
+
+- [ ] **Testing Requirements**:
+  - [ ] Unit tests: 80+ tests passing (15 utils + 20 budgets + 20 goals + 20 net-worth + 5 CLI)
+  - [ ] Integration tests: 15+ tests passing (scaffold → database workflow for all 3 domains)
+  - [ ] Acceptance tests: 12+ tests passing (real PostgreSQL, all 3 domains)
+  - [ ] CLI tests: 10+ tests passing (command registration, execution, all domains)
+  - [ ] Total: 117+ tests passing
+  - [ ] Coverage: >90% for scaffold module
+
+- [ ] **Code Quality**:
+  - [ ] `ruff format` passes for all scaffold files
+  - [ ] `ruff check` passes (no errors)
+  - [ ] `mypy` passes (full type coverage)
+
+- [ ] **Documentation**:
+  - [ ] `docs/persistence.md` created (500-800 lines guide)
+  - [ ] `src/fin_infra/docs/presistence-strategy.md` complete (already exists)
+  - [ ] README.md updated with persistence section
+  - [ ] All TODO comments updated (11 total)
+  - [ ] Template README.md files for each domain
+
+- [ ] **Functionality**:
+  - [ ] CLI command registered and functional
+  - [ ] All three domains scaffold successfully (budgets, goals, net-worth)
+  - [ ] Generated code compiles without errors
+  - [ ] Generated code passes type checking
+  - [ ] Templates support all flags (tenant, soft-delete, repository)
+  - [ ] Overwrite protection works correctly
+
+- [ ] **Integration Verification**:
+  - [ ] Scaffold → Alembic migration workflow works
+  - [ ] Generated repository integrates with FastAPI
+  - [ ] Multi-tenancy flag produces correct schema
+  - [ ] Soft delete flag produces correct schema
+  - [ ] Works with PostgreSQL (asyncpg)
+  - [ ] Works with SQLite (aiosqlite)
+  - [ ] Works with MySQL (aiomysql)
+
+**Module Status**: Provides complete persistence scaffolding solution. All 11 TODO comments resolved. Applications can generate production-ready models, schemas, and repositories in minutes.
+
+**Task Breakdown Summary**:
+- **Task 1**: Utilities (render_template, write, ensure_init_py) - 2-4 hours
+- **Task 2**: Budgets templates (models, schemas, repository, README) - 4-6 hours
+- **Task 3**: Budgets scaffold function - 2-3 hours
+- **Task 4**: CLI commands (Typer) - 2-3 hours
+- **Task 5**: Register CLI in main - 1 hour
+- **Task 6**: Goals templates (models, schemas, repository, README) - 2-3 hours
+- **Task 7**: Net-worth templates (models, schemas, repository, README) - 2-3 hours
+- **Task 8**: Goals scaffold function - 1-2 hours
+- **Task 9**: Net-worth scaffold function - 1-2 hours
+- **Task 10**: Update CLI for all domains - 1 hour
+- **Task 11**: Update 11 TODO comments - 1-2 hours
+- **Task 12**: Create docs/persistence.md - 4-6 hours
+- **Task 13**: Update README - 1 hour
+- **Task 14**: Comprehensive tests (unit + integration + acceptance) - 2-3 hours
+- **Task 15**: Quality gates and verification - 1-2 hours
+
+**Estimated Effort**: 30-40 hours total (15 tasks over ~3-5 days)
+
+**Success Criteria**:
+✅ fin-infra remains stateless (no ModelBase models in package)
+✅ Applications can scaffold persistence in <5 minutes for any domain
+✅ Templates follow svc-infra patterns exactly (importlib.resources, string.Template, Typer CLI)
+✅ Generated code is production-ready (passes mypy, ruff, compiles without errors)
+✅ All 11 TODO comments clarified with scaffold references
+✅ CLI supports 3 domains (budgets, goals, net-worth) with consistent interface
+✅ Comprehensive tests (117+ tests, >90% coverage)
+✅ Complete documentation (persistence.md + presistence-strategy.md + template READMEs)
+
+---
+
 #### Module 3: Goals Module Enhancement
 
 **Purpose**: Expand existing net_worth/goals.py into standalone module with full CRUD, milestone tracking, and funding allocation. Serves personal finance, wealth management, retirement planning, and business savings apps.
