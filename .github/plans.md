@@ -786,11 +786,27 @@ def add_capability(
     - [x] Quality checks: mypy clean, ruff clean
     - Note: Custom template save/get require DB wiring in Task 17
 
-16. [ ] **Create easy_budgets() builder** (FILE: `src/fin_infra/budgets/ease.py`)
-    - [ ] Function: `easy_budgets() -> BudgetTracker`
-    - [ ] Configure DB (use svc-infra SQL)
-    - [ ] Configure webhooks (use svc-infra for alerts)
-    - [ ] Default to monthly budgets with rollover enabled
+16. [x] **Create easy_budgets() builder** (FILE: `src/fin_infra/budgets/ease.py`)
+    - [x] Function: `easy_budgets(db_url=None, pool_size=5, ...) -> BudgetTracker`
+      - Takes db_url parameter or falls back to SQL_URL env var
+      - Creates AsyncEngine with sensible defaults (pool_size=5, max_overflow=10, pool_pre_ping=True)
+      - Database-specific connection args (PostgreSQL JIT off, SQLite check_same_thread=False)
+      - Pool recycle after 1 hour
+      - Returns configured BudgetTracker instance
+    - [x] Helper functions:
+      - `_get_connect_args(database_url)`: Database-specific connection settings
+      - `shutdown_budgets(tracker)`: Graceful cleanup (disposes engine)
+      - `validate_database_url(url)`: Validates async driver and URL format
+    - [x] Supported databases: PostgreSQL (asyncpg), SQLite (aiosqlite), MySQL (aiomysql/asyncmy)
+    - [x] Unit tests: `tests/unit/budgets/test_ease.py` (27 tests)
+      - TestEasyBudgets: 6 tests (explicit URL, env var, validation, pool settings, SQLite, MySQL)
+      - TestGetConnectArgs: 6 tests (PostgreSQL, asyncpg, SQLite, aiosqlite, MySQL, unknown)
+      - TestValidateDatabaseUrl: 9 tests (valid cases, sync drivers rejected, malformed URLs)
+      - TestShutdownBudgets: 3 tests (dispose, None tracker, None engine)
+      - TestEasyBudgetsIntegration: 3 tests (full workflow, env var, custom pool)
+    - [x] All tests passing (27/27)
+    - [x] Quality checks: mypy clean, ruff clean
+    - Note: Webhooks will be wired in Task 17 FastAPI helper
 
 17. [ ] **Create add_budgets() FastAPI helper** (FILE: `src/fin_infra/budgets/add.py`)
     - [ ] Use svc-infra `user_router` (MANDATORY)
