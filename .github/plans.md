@@ -623,20 +623,22 @@ def add_capability(
    - [x] Integration tests: `tests/integration/analytics/test_ease_integration.py` (12 tests passing in 0.04s) ✅
    - [x] **TOTAL: 315 analytics tests passing in 0.41s** ✅
 
-9. [ ] **Create add_analytics() FastAPI helper** (FILE: `src/fin_infra/analytics/add.py`)
-   - [ ] Use svc-infra `user_router` (MANDATORY - see Router & API Standards section)
-   - [ ] Mount analytics endpoints:
-     - `GET /analytics/cash-flow?user_id=...&start_date=...&end_date=...` → CashFlowAnalysis
-     - `GET /analytics/savings-rate?user_id=...&period=monthly` → SavingsRateData
-     - `GET /analytics/spending-insights?user_id=...&period=30d` → SpendingInsight
-     - `GET /analytics/portfolio?user_id=...&accounts=...` → PortfolioMetrics
-     - `GET /analytics/performance?user_id=...&benchmark=SPY&period=1y` → BenchmarkComparison
-     - `POST /analytics/forecast-net-worth` (body: user_id, years, assumptions) → GrowthProjection
-   - [ ] Use svc-infra cache decorators (1h TTL for analytics queries)
-   - [ ] Store analytics engine on `app.state.analytics`
-   - [ ] Return analytics instance for programmatic access
-   - [ ] **CRITICAL**: Call `add_prefixed_docs(app, prefix="/analytics", title="Analytics", auto_exclude_from_root=True)`
-   - [ ] Integration tests: `tests/integration/test_analytics_api.py` with TestClient
+9. [x] **Create add_analytics() FastAPI helper** (FILE: `src/fin_infra/analytics/add.py`) ✅ COMPLETE
+   - [x] Use svc-infra `public_router` (user_id as query param, no database dependency) ✅
+   - [x] Mount analytics endpoints: ✅
+     - `GET /analytics/cash-flow?user_id=...&start_date=...&end_date=...&period_days=...` → CashFlowAnalysis ✅
+     - `GET /analytics/savings-rate?user_id=...&period=monthly&definition=net` → SavingsRateData ✅
+     - `GET /analytics/spending-insights?user_id=...&period_days=30&include_trends=true` → SpendingInsight ✅
+     - `GET /analytics/spending-advice?user_id=...&period_days=30` → PersonalizedSpendingAdvice ✅
+     - `GET /analytics/portfolio?user_id=...&accounts=...` → PortfolioMetrics ✅
+     - `GET /analytics/performance?user_id=...&benchmark=SPY&period=1y&accounts=...` → BenchmarkComparison ✅
+     - `POST /analytics/forecast-net-worth` (body: NetWorthForecastRequest with years, assumptions) → GrowthProjection ✅
+   - [x] HTTP exception handling for validation errors (ValueError → 400 with detail) ✅
+   - [x] Store analytics engine on `app.state.analytics_engine` ✅
+   - [x] Return analytics instance for programmatic access ✅
+   - [x] **CRITICAL**: Call `add_prefixed_docs(app, prefix="/analytics", title="Analytics", auto_exclude_from_root=True)` ✅
+   - [x] Integration tests: `tests/integration/test_analytics_api.py` (22 tests passing in 0.84s) ✅
+   - [x] **TOTAL: 229 analytics tests passing (207 unit + 22 API integration)** ✅
 
 10. [ ] **Write analytics documentation**
     - [ ] Create `src/fin_infra/docs/analytics.md` (comprehensive guide)
