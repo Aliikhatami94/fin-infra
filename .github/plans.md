@@ -1472,23 +1472,23 @@ overspending = detect_overspending(budget.categories, actual_spending)
       - Goals domain: No add.py file exists yet (scaffold templates only)
     - Reference: Phase 7 in presistence-strategy.md (Task 11 completed in ~25 minutes)
 
-12. [ ] **Create persistence documentation** (FILE: `src/fin_infra/docs/persistence.md`)
+12. [x] **Create persistence documentation** (FILE: `src/fin_infra/docs/persistence.md`)
     - [ ] Section: Why fin-infra is stateless
       - Library vs framework distinction
       - Comparison with stripe-python, plaid-python (stateless libraries)
       - Comparison with Django, Rails (stateful frameworks)
       - Benefits: no DB dependency, application flexibility, no version coupling
-    - [ ] Section: Scaffold + `add_sql_resources()` workflow (PRIMARY PATTERN)
+    - [x] Section: Scaffold + `add_sql_resources()` workflow (PRIMARY PATTERN)
       - Step 1: Generate models with scaffold CLI
       - Step 2: Run svc-infra migrations
       - Step 3: Wire CRUD with ONE function call: `add_sql_resources(app, [SqlResource(...)])`
       - Example: Budget CRUD with zero manual router code
       - Benefits: Automatic pagination, search, ordering, soft delete
       - Reference: svc-infra's `src/svc_infra/api/fastapi/db/sql/README.md`
-    - [ ] Section: When to use scaffold vs manual templates
+    - [x] Section: When to use scaffold vs manual templates
       - Scaffold CLI: Quick start, standard patterns, rapid prototyping
       - Manual templates: Full customization, complex schemas, existing codebase integration
-    - [ ] Section: Step-by-step scaffold guide
+    - [x] Section: Step-by-step scaffold guide
       1. Choose domain (budgets, goals, net-worth)
       2. Run scaffold command with flags
       3. Review generated files
@@ -1496,37 +1496,56 @@ overspending = detect_overspending(budget.categories, actual_spending)
       5. Create Alembic migration
       6. Apply migration
       7. Use repository in application
-    - [ ] Section: Integration with svc-infra ModelBase and Alembic
+    - [x] Section: Integration with svc-infra ModelBase and Alembic
       - ModelBase discovery mechanism
       - Alembic env.py configuration
       - DISCOVER_PACKAGES environment variable
       - Migration workflow: `svc-infra revision -m "..."` → `svc-infra upgrade head`
-    - [ ] Section: Multi-tenancy patterns
+    - [x] Section: Multi-tenancy patterns
       - When to use `--include-tenant` flag
       - Tenant isolation strategies
       - Row-level security (RLS) with PostgreSQL
       - Example: Multi-tenant budget application
-    - [ ] Section: Soft delete patterns
+    - [x] Section: Soft delete patterns
       - When to use `--include-soft-delete` flag
       - Query filtering (deleted_at IS NULL)
       - Hard delete vs soft delete tradeoffs
       - Example: Recoverable budget deletion
-    - [ ] Section: Testing strategies
+    - [x] Section: Testing strategies
       - Unit tests with in-memory storage (BudgetTracker pattern)
       - Integration tests with test database (aiosqlite)
       - Acceptance tests with real database (PostgreSQL)
       - Fixture patterns for repositories
-    - [ ] Section: Example workflows
+    - [x] Section: Example workflows
       - Personal finance app (single-tenant, PostgreSQL)
       - SaaS budgeting platform (multi-tenant, PostgreSQL with RLS)
       - Wealth management app (multi-tenant, soft deletes, MySQL)
-    - [ ] Section: Troubleshooting
+    - [x] Section: Troubleshooting
       - Common scaffold errors
       - Migration conflicts
       - Type checking issues with generated code
       - Performance optimization (indexes, queries)
-    - [ ] Quality check: ~500-800 lines, comprehensive guide with code examples
+    - [x] Quality check: ~500-800 lines, comprehensive guide with code examples
     - Reference: Phase 8 in presistence-strategy.md (4-6 hours estimated)
+    - **Completion notes (Task 12)**:
+      - ✅ Created `src/fin_infra/docs/persistence.md` (825 lines)
+      - ✅ All 10 required sections completed with comprehensive examples
+      - ✅ Section 1: Why stateless (library vs framework comparison, benefits)
+      - ✅ Section 2: Scaffold + add_sql_resources() workflow (complete Budget CRUD example)
+      - ✅ Section 3: When to use scaffold vs manual (decision guide with scenarios)
+      - ✅ Section 4: Step-by-step scaffold guide (7 detailed steps with commands)
+      - ✅ Section 5: svc-infra integration (ModelBase, Alembic, DISCOVER_PACKAGES)
+      - ✅ Section 6: Multi-tenancy patterns (tenant_id, RLS, examples)
+      - ✅ Section 7: Soft delete patterns (deleted_at, tradeoffs, restore example)
+      - ✅ Section 8: Testing strategies (unit/integration/acceptance patterns)
+      - ✅ Section 9: Example workflows (personal finance, SaaS, wealth management)
+      - ✅ Section 10: Troubleshooting (common errors, migrations, performance)
+      - ✅ Code examples throughout showing scaffold commands, migrations, CRUD wiring
+      - ✅ Tables comparing libraries vs frameworks, soft vs hard delete
+      - ✅ Real-world examples from Tasks 8-10 (all three domains)
+      - Referenced by: 11 TODO comments across codebase (Task 11)
+      - Time: ~3 hours implementation
+      - Status: All TODO comments now have comprehensive reference documentation
 
 13. [ ] **Update main README** (FILE: `README.md`)
     - [ ] Add "Persistence" section after "Quick Start"
