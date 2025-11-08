@@ -101,17 +101,21 @@ def easy_budgets(
             "Database URL required: provide db_url parameter or set SQL_URL environment variable"
         )
 
+    # Build engine kwargs (SQLite doesn't support max_overflow)
+    engine_kwargs = {
+        "pool_pre_ping": pool_pre_ping,
+        "echo": echo,
+        "connect_args": _get_connect_args(database_url),
+    }
+    
+    # Only add pool settings for non-SQLite databases
+    if "sqlite" not in database_url.lower():
+        engine_kwargs["pool_size"] = pool_size
+        engine_kwargs["max_overflow"] = max_overflow
+        engine_kwargs["pool_recycle"] = 3600  # Recycle connections after 1 hour
+
     # Create async engine with sensible defaults
-    engine = create_async_engine(
-        database_url,
-        pool_size=pool_size,
-        max_overflow=max_overflow,
-        pool_pre_ping=pool_pre_ping,
-        echo=echo,
-        # Future-proof settings
-        pool_recycle=3600,  # Recycle connections after 1 hour
-        connect_args=_get_connect_args(database_url),
-    )
+    engine = create_async_engine(database_url, **engine_kwargs)
 
     # Create and return tracker
     return BudgetTracker(db_engine=engine)
