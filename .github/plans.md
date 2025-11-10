@@ -1874,30 +1874,52 @@ overspending = detect_overspending(budget.categories, actual_spending)
 
 **Tasks**:
 
-19. [ ] **Refactor goals out of net_worth module**
-    - [ ] Create `src/fin_infra/goals/` directory
-    - [ ] Move `src/fin_infra/net_worth/goals.py` → `src/fin_infra/goals/management.py`
-    - [ ] Update all imports across codebase (net_worth.goals → goals.management)
-    - [ ] Keep backward compatibility (net_worth.goals imports from goals.management)
+19. [x] **Refactor goals out of net_worth module** ✅ COMPLETE
+    - [x] Create `src/fin_infra/goals/` directory ✅
+    - [x] Move `src/fin_infra/net_worth/goals.py` → `src/fin_infra/goals/management.py` ✅
+    - [x] Update all imports across codebase (net_worth.goals → goals.management) ✅
+      - Updated `goals/management.py` docstring ✅
+      - Updated `net_worth/ease.py` import ✅
+      - Updated `goals/scaffold_templates/README.md` ✅
+      - Updated `examples/scripts/measure_llm_costs.py` ✅
+      - Updated `tests/unit/net_worth/test_llm_api_patterns.py` (2 locations) ✅
+    - [x] Keep backward compatibility (net_worth.goals imports from goals.management) ✅
+      - Created deprecation warning in net_worth/goals.py ✅
+      - Tested backward compatibility works with warning ✅
+      - Tested new import paths work ✅
+    - **Results**: Goals module successfully refactored. All 7 imports updated. Backward compatibility maintained with deprecation warning.
     - Verify in coverage analysis: Prepares for "Goal Management" expansion
 
-20. [ ] **Expand goals models** (NEW FILE: `src/fin_infra/goals/models.py`)
-    - [ ] `GoalType` enum: `savings`, `debt`, `investment`, `net_worth`, `income`, `custom`
-    - [ ] `GoalStatus` enum: `active`, `paused`, `completed`, `abandoned`
-    - [ ] Expand `Goal` model with new fields:
-      - `type` (GoalType)
-      - `status` (GoalStatus)
-      - `milestones` (list of milestone amounts with dates)
-      - `funding_sources` (accounts contributing to goal)
-      - `auto_contribute` (boolean for automatic transfers)
-      - `tags` (custom tags for categorization)
-    - [ ] New `GoalProgress` model (replace stub):
-      - `goal_id`, `current_amount`, `target_amount`, `percent_complete`
-      - `monthly_contribution_actual`, `monthly_contribution_target`
-      - `projected_completion_date`, `on_track` (boolean)
-      - `milestones_reached` (list of completed milestones)
-    - [ ] New `Milestone` model (amount, target_date, description, reached, reached_date)
-    - [ ] New `FundingSource` model (account_id, allocation_percent)
+20. [x] **Expand goals models** (NEW FILE: `src/fin_infra/goals/models.py`) ✅ COMPLETE
+    - [x] `GoalType` enum: `savings`, `debt`, `investment`, `net_worth`, `income`, `custom` ✅
+    - [x] `GoalStatus` enum: `active`, `paused`, `completed`, `abandoned` ✅
+    - [x] Expand `Goal` model with new fields: ✅
+      - [x] `type` (GoalType) ✅
+      - [x] `status` (GoalStatus) ✅
+      - [x] `milestones` (list of milestone amounts with dates) ✅
+      - [x] `funding_sources` (accounts contributing to goal) ✅
+      - [x] `auto_contribute` (boolean for automatic transfers) ✅
+      - [x] `tags` (custom tags for categorization) ✅
+      - [x] Metadata fields: `created_at`, `updated_at`, `completed_at` ✅
+    - [x] New `GoalProgress` model (replace stub): ✅
+      - [x] `goal_id`, `current_amount`, `target_amount`, `percent_complete` ✅
+      - [x] `monthly_contribution_actual`, `monthly_contribution_target` ✅
+      - [x] `projected_completion_date`, `on_track` (boolean) ✅
+      - [x] `milestones_reached` (list of completed milestones) ✅
+      - [x] `calculated_at` metadata field ✅
+    - [x] New `Milestone` model (amount, target_date, description, reached, reached_date) ✅
+      - [x] Validator: reached_date only if reached=True ✅
+    - [x] New `FundingSource` model (account_id, allocation_percent) ✅
+      - [x] Allocation percent validation (0-100%) ✅
+    - [x] Comprehensive validators: ✅
+      - [x] Milestone: reached_date validation ✅
+      - [x] Goal: completed_at only if status=COMPLETED ✅
+      - [x] Goal: current_amount ≤ target_amount (except debt goals) ✅
+      - [x] GoalProgress: auto-calculate percent_complete ✅
+    - [x] Updated `goals/__init__.py` to export all models ✅
+    - [x] Tested all models instantiation ✅
+    - [x] Tested all validators ✅
+    - **Results**: Created comprehensive goal models (355 lines). All 6 validators work correctly. Models support multi-use cases: personal finance, wealth management, business goals.
 
 21. [ ] **Implement full goal CRUD** (FILE: `src/fin_infra/goals/management.py`)
     - [ ] Function: `create_goal(user_id, name, type, target, deadline, ...) -> Goal`

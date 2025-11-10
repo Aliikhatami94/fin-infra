@@ -406,14 +406,14 @@ def easy_net_worth(
             pass
         
         try:
-            from fin_infra.net_worth.goals import FinancialGoalTracker
+            from fin_infra.goals.management import FinancialGoalTracker
             goal_tracker = FinancialGoalTracker(
                 llm=llm,
                 provider=llm_provider,
                 model_name=model_name,
             )
         except ImportError:
-            # goals.py not yet implemented, skip
+            # goals.management not yet implemented, skip
             pass
         
         try:

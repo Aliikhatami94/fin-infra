@@ -90,7 +90,7 @@ async def test_insights_uses_structured_output():
 @pytest.mark.asyncio
 async def test_goals_uses_structured_output():
     """Verify goals uses with_structured_output() for single-shot validation."""
-    from fin_infra.net_worth.goals import FinancialGoalTracker, GoalValidation
+    from fin_infra.goals.management import FinancialGoalTracker, GoalValidation
     from fin_infra.net_worth.models import NetWorthSnapshot
     from datetime import datetime
     
@@ -192,8 +192,8 @@ def test_insights_pattern_documented():
 
 def test_goals_pattern_documented():
     """Verify goals module uses structured output correctly."""
-    from fin_infra.net_worth import goals
+    from fin_infra.goals import management
     
     # Check class docstring mentions structured output
-    class_doc = goals.FinancialGoalTracker.__doc__
+    class_doc = management.FinancialGoalTracker.__doc__
     assert class_doc is not None
