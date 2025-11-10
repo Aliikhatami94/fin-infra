@@ -13,6 +13,20 @@ from fin_infra.goals.management import (
     calculate_home_purchase_goal,
     calculate_retirement_goal,
     calculate_wealth_milestone,
+    create_goal,
+    delete_goal,
+    get_goal,
+    get_goal_progress,
+    list_goals,
+    update_goal,
+)
+from fin_infra.goals.milestones import (
+    add_milestone,
+    check_milestones,
+    get_celebration_message,
+    get_milestone_progress,
+    get_next_milestone,
+    trigger_milestone_notification,
 )
 from fin_infra.goals.models import (
     FundingSource,
@@ -32,6 +46,20 @@ __all__ = [
     "calculate_home_purchase_goal",
     "calculate_retirement_goal",
     "calculate_wealth_milestone",
+    # CRUD operations (from management.py)
+    "create_goal",
+    "delete_goal",
+    "get_goal",
+    "get_goal_progress",
+    "list_goals",
+    "update_goal",
+    # Milestone tracking (from milestones.py)
+    "add_milestone",
+    "check_milestones",
+    "get_celebration_message",
+    "get_milestone_progress",
+    "get_next_milestone",
+    "trigger_milestone_notification",
     # Enhanced models (from models.py)
     "FundingSource",
     "Goal",

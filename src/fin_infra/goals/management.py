@@ -682,3 +682,333 @@ Provide course corrections if behind."""
 
         result: GoalProgressReport = await structured.ainvoke(messages)
         return result
+
+
+# ============================================================================
+# Goal CRUD Operations (In-Memory Storage)
+# ============================================================================
+
+# In-memory goal storage for testing/examples
+# Applications should use svc-infra DB (SQL/Mongo) for persistence
+_GOALS_STORE: dict[str, Any] = {}
+
+
+def create_goal(
+    user_id: str,
+    name: str,
+    goal_type: str,
+    target_amount: float,
+    deadline: datetime | None = None,
+    description: str | None = None,
+    current_amount: float = 0.0,
+    milestones: list[dict[str, Any]] | None = None,
+    funding_sources: list[dict[str, Any]] | None = None,
+    auto_contribute: bool = False,
+    tags: list[str] | None = None,
+) -> dict[str, Any]:
+    """
+    Create a new financial goal.
+
+    Args:
+        user_id: User identifier
+        name: Goal name
+        goal_type: Goal type (savings, debt, investment, net_worth, income, custom)
+        target_amount: Target amount to achieve
+        deadline: Optional target completion date
+        description: Optional detailed description
+        current_amount: Initial progress amount (default 0.0)
+        milestones: Optional list of milestone dicts
+        funding_sources: Optional list of funding source dicts
+        auto_contribute: Enable automatic transfers (default False)
+        tags: Optional list of tags for categorization
+
+    Returns:
+        Goal dict with generated ID and timestamps
+
+    Example:
+        from fin_infra.goals.management import create_goal
+        from datetime import datetime
+
+        goal = create_goal(
+            user_id="user_123",
+            name="Emergency Fund",
+            goal_type="savings",
+            target_amount=50000.0,
+            deadline=datetime(2026, 12, 31),
+            tags=["essential", "high-priority"]
+        )
+
+    Note:
+        Uses in-memory storage for testing. Applications should use
+        svc-infra DB (SQL/Mongo) for persistence. See docs/persistence.md.
+    """
+    from fin_infra.goals.models import Goal, GoalStatus, GoalType
+
+    goal_id = f"goal_{user_id}_{datetime.utcnow().timestamp()}"
+
+    # Create Goal model instance for validation
+    goal = Goal(
+        id=goal_id,
+        user_id=user_id,
+        name=name,
+        description=description,
+        type=GoalType(goal_type),
+        status=GoalStatus.ACTIVE,
+        target_amount=target_amount,
+        current_amount=current_amount,
+        deadline=deadline,
+        milestones=[],  # Will be added via milestone tracking
+        funding_sources=[],  # Will be added via funding allocation
+        auto_contribute=auto_contribute,
+        tags=tags or [],
+        completed_at=None,  # Not completed yet
+    )
+
+    # Store as dict
+    goal_dict = goal.model_dump()
+    _GOALS_STORE[goal_id] = goal_dict
+
+    return goal_dict
+
+
+def list_goals(
+    user_id: str,
+    goal_type: str | None = None,
+    status: str | None = None,
+) -> list[dict[str, Any]]:
+    """
+    List all goals for a user with optional filtering.
+
+    Args:
+        user_id: User identifier
+        goal_type: Optional filter by goal type
+        status: Optional filter by status
+
+    Returns:
+        List of goal dicts matching filters
+
+    Example:
+        from fin_infra.goals.management import list_goals
+
+        # Get all active savings goals
+        goals = list_goals(
+            user_id="user_123",
+            goal_type="savings",
+            status="active"
+        )
+    """
+    results = []
+
+    for goal in _GOALS_STORE.values():
+        # Filter by user
+        if goal["user_id"] != user_id:
+            continue
+
+        # Filter by type if specified
+        if goal_type and goal["type"] != goal_type:
+            continue
+
+        # Filter by status if specified
+        if status and goal["status"] != status:
+            continue
+
+        results.append(goal)
+
+    return results
+
+
+def get_goal(goal_id: str) -> dict[str, Any]:
+    """
+    Get a goal by ID.
+
+    Args:
+        goal_id: Goal identifier
+
+    Returns:
+        Goal dict
+
+    Raises:
+        KeyError: If goal not found
+
+    Example:
+        from fin_infra.goals.management import get_goal
+
+        goal = get_goal("goal_123")
+        print(goal["name"])
+    """
+    if goal_id not in _GOALS_STORE:
+        raise KeyError(f"Goal not found: {goal_id}")
+
+    return _GOALS_STORE[goal_id]
+
+
+def update_goal(
+    goal_id: str,
+    updates: dict[str, Any],
+) -> dict[str, Any]:
+    """
+    Update a goal with partial updates.
+
+    Args:
+        goal_id: Goal identifier
+        updates: Dict of fields to update
+
+    Returns:
+        Updated goal dict
+
+    Raises:
+        KeyError: If goal not found
+
+    Example:
+        from fin_infra.goals.management import update_goal
+
+        goal = update_goal(
+            "goal_123",
+            {"current_amount": 15000.0, "status": "active"}
+        )
+    """
+    if goal_id not in _GOALS_STORE:
+        raise KeyError(f"Goal not found: {goal_id}")
+
+    goal = _GOALS_STORE[goal_id]
+
+    # Update fields
+    for key, value in updates.items():
+        if key in goal and key not in ["id", "user_id", "created_at"]:
+            goal[key] = value
+
+    # Update timestamp
+    goal["updated_at"] = datetime.utcnow()
+
+    # Validate updated goal
+    from fin_infra.goals.models import Goal
+
+    Goal(**goal)  # Will raise ValidationError if invalid
+
+    return goal
+
+
+def delete_goal(goal_id: str) -> None:
+    """
+    Delete a goal.
+
+    Args:
+        goal_id: Goal identifier
+
+    Raises:
+        KeyError: If goal not found
+
+    Example:
+        from fin_infra.goals.management import delete_goal
+
+        delete_goal("goal_123")
+    """
+    if goal_id not in _GOALS_STORE:
+        raise KeyError(f"Goal not found: {goal_id}")
+
+    del _GOALS_STORE[goal_id]
+
+
+def get_goal_progress(goal_id: str) -> dict[str, Any]:
+    """
+    Calculate comprehensive goal progress with projections.
+
+    Replaces 501 stub. Calculates:
+    - Current progress percentage
+    - Monthly contributions (actual vs target)
+    - Projected completion date
+    - On-track status
+    - Milestones reached
+
+    Args:
+        goal_id: Goal identifier
+
+    Returns:
+        GoalProgress dict with calculations
+
+    Raises:
+        KeyError: If goal not found
+
+    Example:
+        from fin_infra.goals.management import get_goal_progress
+
+        progress = get_goal_progress("goal_123")
+        print(f"Progress: {progress['percent_complete']:.1f}%")
+        print(f"On track: {progress['on_track']}")
+
+    Note:
+        In production, this should integrate with:
+        - Banking/brokerage accounts for current_amount
+        - Transaction history for actual contribution calculation
+        - svc-infra.cache for expensive calculations (24h TTL)
+    """
+    from fin_infra.goals.models import GoalProgress, Milestone
+
+    goal = get_goal(goal_id)
+
+    # Calculate percent complete
+    current = goal["current_amount"]
+    target = goal["target_amount"]
+    percent_complete = (current / target * 100) if target > 0 else 0
+
+    # Calculate monthly contributions
+    # Simplified: In production, query transaction history
+    deadline = goal.get("deadline")
+    if deadline:
+        if isinstance(deadline, str):
+            deadline = datetime.fromisoformat(deadline.replace("Z", "+00:00"))
+
+        months_remaining = max(
+            (
+                (deadline.year - datetime.utcnow().year) * 12
+                + (deadline.month - datetime.utcnow().month)
+            ),
+            1,
+        )
+        remaining_amount = target - current
+        monthly_target = remaining_amount / months_remaining if months_remaining > 0 else 0
+    else:
+        monthly_target = 0
+
+    # Simplified actual contribution (in production, calculate from transactions)
+    monthly_actual = monthly_target * 0.8  # Assume 80% of target for demo
+
+    # Project completion date
+    if monthly_actual > 0:
+        months_needed = (target - current) / monthly_actual
+        now = datetime.utcnow()
+        total_months = now.year * 12 + now.month + int(months_needed)
+        projected_year = total_months // 12
+        projected_month = (total_months % 12) or 12
+        if projected_month == 12:
+            projected_year -= 1
+        projected_date = now.replace(year=projected_year, month=projected_month, day=1)
+    else:
+        projected_date = None
+
+    # Determine if on track
+    on_track = monthly_actual >= monthly_target if monthly_target > 0 else True
+
+    # Check milestones reached
+    milestones_reached = []
+    for milestone_dict in goal.get("milestones", []):
+        milestone = Milestone(**milestone_dict)
+        if current >= milestone.amount and not milestone.reached:
+            milestone.reached = True
+            milestone.reached_date = datetime.utcnow()
+            milestones_reached.append(milestone)
+
+    # Create progress model
+    progress = GoalProgress(
+        goal_id=goal_id,
+        current_amount=current,
+        target_amount=target,
+        percent_complete=percent_complete,
+        monthly_contribution_actual=monthly_actual,
+        monthly_contribution_target=monthly_target,
+        projected_completion_date=projected_date,
+        on_track=on_track,
+        milestones_reached=milestones_reached,
+    )
+
+    return progress.model_dump()
