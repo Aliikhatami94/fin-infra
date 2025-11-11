@@ -24,7 +24,7 @@ from .models import (
 
 if TYPE_CHECKING:
     from fastapi import FastAPI
-    from .insights import SubscriptionInsights
+    from .detector import RecurringDetector
 
 
 def add_recurring_detection(
@@ -344,6 +344,7 @@ def add_recurring_detection(
 
     # Route 6: Get insights (V2, LLM-powered)
     if enable_llm and detector.insights_generator:
+
         @router.get("/insights")
         async def get_subscription_insights():
             """
@@ -528,17 +529,13 @@ def _calculate_stats(patterns: list[RecurringPattern]) -> SubscriptionStats:
                 monthly_total += pattern.amount / 12
 
     # Top merchants by amount
-    merchants_with_amount = [
-        (p.merchant_name, p.amount) for p in patterns if p.amount is not None
-    ]
+    merchants_with_amount = [(p.merchant_name, p.amount) for p in patterns if p.amount is not None]
     top_merchants = sorted(merchants_with_amount, key=lambda x: x[1], reverse=True)[:5]
 
     # Confidence distribution
     confidence_dist = {
         "high (0.85-1.0)": sum(1 for p in patterns if p.confidence >= 0.85),
-        "medium (0.70-0.84)": sum(
-            1 for p in patterns if 0.70 <= p.confidence < 0.85
-        ),
+        "medium (0.70-0.84)": sum(1 for p in patterns if 0.70 <= p.confidence < 0.85),
         "low (0.60-0.69)": sum(1 for p in patterns if 0.60 <= p.confidence < 0.70),
     }
 

@@ -365,7 +365,9 @@ def simulate_tlh_scenario(
     else:
         # Use individual opportunity rates
         total_savings = sum((o.potential_tax_savings for o in opportunities), start=Decimal("0"))
-        avg_rate = sum((o.tax_rate for o in opportunities), start=Decimal("0")) / Decimal(len(opportunities))
+        avg_rate = sum((o.tax_rate for o in opportunities), start=Decimal("0")) / Decimal(
+            len(opportunities)
+        )
 
     # Count wash sale risk levels
     wash_sale_risk_summary = {"none": 0, "low": 0, "medium": 0, "high": 0}
