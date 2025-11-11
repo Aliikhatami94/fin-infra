@@ -34,7 +34,7 @@ Alpha. Core functionality is stable, but the surface is intentionally small whil
 | Market Data | Stocks, crypto, forex quotes and historical data | [Market Data](src/fin_infra/docs/market-data.md) |
 | Credit Scores | Credit reports and monitoring | [Credit](src/fin_infra/docs/credit.md) |
 | Brokerage | Trading accounts and portfolio data | [Brokerage](src/fin_infra/docs/brokerage.md) |
-| Tax Data | Tax documents and data management | [Tax](src/fin_infra/docs/tax.md) |
+| Tax Data | Tax documents, crypto gains, tax liability estimation, tax-loss harvesting | [Tax](src/fin_infra/docs/tax.md) |
 | Cashflows | NPV, IRR, loan calculations | [Cashflows](src/fin_infra/docs/cashflows.md) |
 | Observability | Metrics and route classification for financial endpoints | [Observability](src/fin_infra/docs/observability.md) |
 | **Compliance** | **PII boundaries, vendor ToS, GLBA/FCRA/PCI-DSS, data lifecycle** | **[Compliance](src/fin_infra/docs/compliance.md)** |
