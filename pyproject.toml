@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "fin-infra"
-version = "0.1.14"
+version = "0.1.20"
 description = "Financial infrastructure toolkit: banking connections, market data, credit, cashflows, and brokerage integrations"
 authors = ["Ali Khatami <aliikhatami94@gmail.com>"]
 license = "MIT"
@@ -66,6 +66,8 @@ isort = "^5.13.2"
 flake8 = "^7.1.1"
 pre-commit = "^4.0.0"
 types-requests = "^2.32.0.20241016"
+pytest-cov = "^7.0.0"
+aiosqlite = "^0.21.0"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -91,6 +93,12 @@ non_interactive = true
 check_untyped_defs = false
 files = "src"
 exclude = '^(\.venv|venv|build|dist|node_modules|tests)/'
+plugins = ["pydantic.mypy"]
+
+[tool.pydantic-mypy]
+init_forbid_extra = true
+init_typed = true
+warn_required_dynamic_aliases = true
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]

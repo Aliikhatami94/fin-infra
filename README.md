@@ -26,11 +26,17 @@ Alpha. Core functionality is stable, but the surface is intentionally small whil
 | --- | --- | --- |
 | Getting Started | Overview and installation | [Getting Started](src/fin_infra/docs/getting-started.md) |
 | **API Integration** | **Building fintech APIs with fin-infra + svc-infra** | **[API Guide](src/fin_infra/docs/api.md)** |
+| **Persistence** | **Scaffold models/schemas/repositories, svc-infra integration, multi-tenancy, soft delete** | **[Persistence Guide](src/fin_infra/docs/persistence.md)** |
+| **Analytics** | **Cash flow, savings rate, spending insights, portfolio metrics, rebalancing, scenario modeling** | **[Analytics](src/fin_infra/docs/analytics.md)** |
+| **Budgets** | **Multi-type budget tracking with templates, alerts, and progress monitoring** | **[Budget Management](src/fin_infra/docs/budgets.md)** |
+| **Documents** | **Tax forms, bank statements, receipts with OCR extraction and AI analysis** | **[Document Management](src/fin_infra/docs/documents.md)** |
+| **Insights** | **Unified insights feed with priority-based aggregation from multiple sources** | **[Insights Feed](src/fin_infra/docs/insights.md)** |
+| **Crypto** | **Crypto market data, portfolio tracking, and AI-powered insights** | **[Crypto](src/fin_infra/docs/crypto.md)** |
 | Banking | Account aggregation, transactions, statements | [Banking](src/fin_infra/docs/banking.md) |
 | Market Data | Stocks, crypto, forex quotes and historical data | [Market Data](src/fin_infra/docs/market-data.md) |
 | Credit Scores | Credit reports and monitoring | [Credit](src/fin_infra/docs/credit.md) |
 | Brokerage | Trading accounts and portfolio data | [Brokerage](src/fin_infra/docs/brokerage.md) |
-| Tax Data | Tax documents and data management | [Tax](src/fin_infra/docs/tax.md) |
+| Tax Data | Tax documents, crypto gains, tax liability estimation, tax-loss harvesting | [Tax](src/fin_infra/docs/tax.md) |
 | Cashflows | NPV, IRR, loan calculations | [Cashflows](src/fin_infra/docs/cashflows.md) |
 | Observability | Metrics and route classification for financial endpoints | [Observability](src/fin_infra/docs/observability.md) |
 | **Compliance** | **PII boundaries, vendor ToS, GLBA/FCRA/PCI-DSS, data lifecycle** | **[Compliance](src/fin_infra/docs/compliance.md)** |
@@ -135,14 +141,57 @@ sum(rate(http_server_requests_total{route=~".*\\|financial"}[5m]))
 
 See [Observability Guide](src/fin_infra/docs/observability.md) for more details.
 
-## Architecture Overview
-add_market_data(app, provider="alphavantage")
+## Persistence
 
-# Now routes are automatically classified:
-# GET /banking/accounts → route_class="financial" in metrics
-# GET /market/quote/AAPL → route_class="financial" in metrics
-# GET /health → route_class="public" in metrics
+fin-infra is a **stateless library** - applications own their database schema, migrations, and data storage.
+
+Generate production-ready models, schemas, and repositories for your application:
+
+```bash
+# Scaffold budgets with multi-tenancy
+fin-infra scaffold budgets --dest-dir app/models/ --include-tenant
+
+# Scaffold goals
+fin-infra scaffold goals --dest-dir app/models/
+
+# Scaffold net-worth snapshots
+fin-infra scaffold net-worth --dest-dir app/models/ --include-soft-delete
 ```
+
+**What you get:**
+- ✅ SQLAlchemy models (with svc-infra's `ModelBase`)
+- ✅ Pydantic schemas (Create, Read, Update)
+- ✅ Repository pattern (full CRUD with async support)
+- ✅ Type hints and docstrings throughout
+- ✅ Production-ready patterns (UUID primary keys, timestamps, indexes)
+
+**Wire CRUD with ONE function call:**
+
+```python
+from svc_infra.api.fastapi.db.sql import add_sql_resources, SqlResource
+from app.models.budgets import Budget
+
+# ONE FUNCTION CALL → Full CRUD API
+add_sql_resources(app, [
+    SqlResource(
+        model=Budget,
+        prefix="/budgets",
+        search_fields=["name", "description"],
+        order_fields=["name", "created_at"],
+        soft_delete=False,
+    )
+])
+
+# Automatic endpoints:
+# POST   /budgets/              # Create budget
+# GET    /budgets/              # List budgets (paginated, searchable, orderable)
+# GET    /budgets/{id}          # Get budget by ID
+# PATCH  /budgets/{id}          # Update budget
+# DELETE /budgets/{id}          # Delete budget
+# GET    /budgets/search        # Search budgets
+```
+
+**See [Persistence Guide](src/fin_infra/docs/persistence.md) for the complete workflow.**
 
 ## Architecture Overview
 
@@ -166,6 +215,10 @@ fin-infra/
 │   └── acceptance/         # Provider integration tests
 └── examples/               # Example applications
 ```
+
+**Architecture Documentation:**
+- [Persistence Strategy ADR](src/fin_infra/docs/presistence-strategy.md) - Why fin-infra is stateless
+- [Persistence Guide](src/fin_infra/docs/persistence.md) - Complete scaffold workflow
 
 ## Configuration
 
@@ -207,20 +260,33 @@ make accept    # Acceptance tests
 make test      # All tests
 ```
 
-## Acceptance tests and CI
-- Acceptance tests are marked with `@pytest.mark.acceptance` and are excluded by default.
-- To run locally, export any required API keys (only Alpha Vantage is needed by default):
-  - `ALPHAVANTAGE_API_KEY` – required for Alpha Vantage market data tests.
-- Run: `poetry run pytest -q -m acceptance`.
+## Acceptance Tests and CI
 
-### GitHub Actions secrets
+Acceptance tests are marked with `@pytest.mark.acceptance` and are excluded by default.
+
+### Running locally
+
+Export any required API keys (only Alpha Vantage is needed by default):
+- `ALPHAVANTAGE_API_KEY` – required for Alpha Vantage market data tests
+
+Run acceptance tests:
+```bash
+poetry run pytest -q -m acceptance
+```
+
+### GitHub Actions Secrets
+
 The acceptance workflow in `.github/workflows/acceptance.yml` expects:
-- `ALPHAVANTAGE_API_KEY` – add it under Repository Settings → Secrets and variables → Actions → New repository secret.
+- `ALPHAVANTAGE_API_KEY` – add it under Repository Settings → Secrets and variables → Actions → New repository secret
 
-If the secret isn’t configured, acceptance tests will still run and CoinGecko tests (public) will pass, but Alpha Vantage tests will be skipped.
+If the secret isn't configured, acceptance tests will still run and CoinGecko tests (public) will pass, but Alpha Vantage tests will be skipped.
 
 ## Contributing
+
 - Keep APIs small and typed. Prefer Pydantic models for IO boundaries.
 - Add or update tests for any behavior changes. Keep `pytest` passing and `mypy` clean.
+- See [Contributing Guide](src/fin_infra/docs/contributing.md) for detailed development workflow.
 
-License: MIT
+## License
+
+MIT
