@@ -344,7 +344,7 @@ class BudgetService:
 - State management
 - Client-side validation
 
-**How fin-infra helps**: fin-infra-web provides example components (not a UI library).
+**How fin-infra helps**: fin-web provides example components (not a UI library).
 
 ---
 

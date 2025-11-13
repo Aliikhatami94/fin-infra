@@ -5,7 +5,7 @@
 **Context**: fin-infra is a **generic, reusable financial infrastructure package** designed to serve ANY team building fintech applications (personal finance, wealth management, banking, budgeting, investment tracking, tax planning, etc.). This plan ensures fin-infra provides comprehensive API coverage for typical fintech web applications while remaining generic and reusable.
 
 **Reference Documentation**:
-- **API Coverage Analysis**: `src/fin_infra/docs/fin-infra-web-api-coverage-analysis.md`
+- **API Coverage Analysis**: `src/fin_infra/docs/fin-web-api-coverage-analysis.md`
   - Current coverage: ~50% of common fintech features
   - Target coverage: >90%
   - Detailed gap analysis by feature area
@@ -455,7 +455,7 @@ def add_capability(
 
 **Goal**: Expand fin-infra to provide ≥90% API coverage for common fintech applications (currently ~50%).
 
-**Before You Start**: Read `src/fin_infra/docs/fin-infra-web-api-coverage-analysis.md` to understand:
+**Before You Start**: Read `src/fin_infra/docs/fin-web-api-coverage-analysis.md` to understand:
 - Current coverage scores by feature area
 - Missing endpoints (HIGH/MEDIUM/LOW priority)
 - Generic design requirements
@@ -1604,7 +1604,7 @@ overspending = detect_overspending(budget.categories, actual_spending)
         - Persistence layer: Repositories, CRUD (generated or `add_sql_resources()`)
         - API routes: FastAPI routers (auto-generated via `add_sql_resources()`)
         - Business rules: Custom validation, workflows, notifications
-        - UI components: React/Vue/etc (fin-infra-web provides examples)
+        - UI components: React/Vue/etc (fin-web provides examples)
     - [x] Section: When to use core functions vs scaffold
       - **Use core functions when**:
         - Need financial calculations: `detect_overspending(budgeted, actual)`

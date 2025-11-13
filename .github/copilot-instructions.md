@@ -9,7 +9,7 @@
 ## Product goal
 - **Generic fintech toolkit**: Serve ANY team building fintech applications (personal finance, wealth management, banking, budgeting, investment tracking, tax planning, etc.)
 - **Reusable primitives**: Banking connections, brokerage integrations, market data, credit scores, tax calculations, cashflow analysis, portfolio analytics, transaction categorization, recurring detection, etc.
-- **Multi-application design**: fin-infra-web is ONE example application using fin-infra; many other teams can build different apps with the same package
+- **Multi-application design**: fin-web is ONE example application using fin-infra; many other teams can build different apps with the same package
 - **Provider-agnostic**: Support multiple providers per domain (Plaid/Teller/MX for banking, Alpaca/IB for brokerage, Alpha Vantage/Yahoo/Polygon for market data)
 - **Easy integration**: One-call setup per capability with sensible defaults and minimal configuration
 - **Mandatory reuse**: Always use svc-infra for backend concerns; never duplicate infrastructure code
@@ -21,11 +21,11 @@
 3. **Banking Apps** (like Chime, Revolut, N26): Account aggregation, transaction categorization, spending insights
 4. **Wealth Management** (like Betterment, Wealthfront, Vanguard): Portfolio rebalancing, tax-loss harvesting, financial planning
 5. **Budgeting Tools** (like Simplifi, PocketGuard): Cash flow analysis, recurring detection, budget management
-6. **Tax Planning Apps** (like TurboTax, H&R Block): Tax liability estimation, crypto gains, document management
-7. **Credit Monitoring** (like Credit Karma, Credit Sesame): Credit score tracking, report analysis
-8. **Crypto Platforms** (like Coinbase, Crypto.com): Crypto portfolio tracking, tax reporting, market data
+7. **Tax Planning Apps** (like TurboTax, H&R Block): Tax liability estimation, crypto gains, document management
+8. **Credit Monitoring** (like Credit Karma, Credit Sesame): Credit score tracking, report analysis
+9. **Crypto Platforms** (like Coinbase, Crypto.com): Crypto portfolio tracking, tax reporting, market data
 
-**fin-infra-web** is a comprehensive reference implementation showing most capabilities, but other teams will build different UIs and workflows using the same fin-infra primitives.
+**fin-web** is a comprehensive reference implementation showing most capabilities, but other teams will build different UIs and workflows using the same fin-infra primitives.
 
 ## Critical Boundaries: fin-infra vs svc-infra vs ai-infra
 

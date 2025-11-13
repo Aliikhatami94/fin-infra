@@ -1,7 +1,7 @@
-# fin-infra-web API Coverage Analysis
+# fin-web API Coverage Analysis
 
 **Date**: November 10, 2025 (Updated - Phase 1 Complete)  
-**Purpose**: Deep analysis comparing fin-infra-web dashboard features with fin-infra package API endpoints
+**Purpose**: Deep analysis comparing fin-web dashboard features with fin-infra package API endpoints
 
 ---
 
@@ -760,7 +760,7 @@
 
 ### Lessons Learned
 
-1. **Generic First**: Designing for multiple use cases (not just fin-infra-web) created more robust, reusable APIs
+1. **Generic First**: Designing for multiple use cases (not just fin-web) created more robust, reusable APIs
 2. **svc-infra Reuse**: Always checking svc-infra first prevented duplication and saved development time
 3. **Test-Driven**: Writing tests alongside code caught edge cases early
 4. **Documentation**: Comprehensive docs (1,000+ lines per module) made integration easier
@@ -851,7 +851,7 @@ def add_documents(app: FastAPI, prefix="/documents") -> DocumentManager:
 ### Long-term Strategy
 
 1. **API-First Development**: Build all new dashboard features with API-first approach
-2. **Mock Data Removal**: Replace all mock data in fin-infra-web with real API calls
+2. **Mock Data Removal**: Replace all mock data in fin-web with real API calls
 3. **Comprehensive Testing**: Add acceptance tests for all new endpoints
 4. **Documentation**: Update docs/api.md with all new endpoints
 
@@ -859,7 +859,7 @@ def add_documents(app: FastAPI, prefix="/documents") -> DocumentManager:
 
 ## Conclusion
 
-**Overall Coverage**: **>90%** of fin-infra-web dashboard features are covered by fin-infra APIs 🎉
+**Overall Coverage**: **>90%** of fin-web dashboard features are covered by fin-infra APIs 🎉
 
 **Phase 3 Complete** (January 27, 2025):
 - ✅ Portfolio rebalancing (0% → **100%** coverage) - Tax-optimized with constraints

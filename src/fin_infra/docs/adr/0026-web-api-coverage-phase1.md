@@ -7,7 +7,7 @@
 - [ADR-0023: Analytics Module Design](./0023-analytics-module-design.md)
 - [ADR-0024: Budgets Module Refactoring](./0024-budgets-module-refactoring.md)
 - [ADR-0025: Goals Module Refactoring](./0025-goals-module-refactoring.md)
-- [Web API Coverage Analysis](../fin-infra-web-api-coverage-analysis.md)
+- [Web API Coverage Analysis](../fin-web-api-coverage-analysis.md)
 
 ---
 
@@ -15,7 +15,7 @@
 
 ### Problem Statement
 
-On November 7, 2025, a comprehensive analysis of fin-infra-web dashboard revealed significant gaps between UI features and available fin-infra API endpoints:
+On November 7, 2025, a comprehensive analysis of fin-web dashboard revealed significant gaps between UI features and available fin-infra API endpoints:
 
 **Coverage Gaps (Pre-Phase 1)**:
 - **Budget Management**: 0% coverage (no endpoints existed)
@@ -25,7 +25,7 @@ On November 7, 2025, a comprehensive analysis of fin-infra-web dashboard reveale
 - **Savings Rate**: 0% coverage (no calculation endpoint)
 
 **Impact**: 
-- fin-infra-web relied heavily on mock data
+- fin-web relied heavily on mock data
 - Backend package couldn't support production fintech applications
 - No API-first development possible
 - Limited reusability across different fintech use cases
@@ -34,7 +34,7 @@ On November 7, 2025, a comprehensive analysis of fin-infra-web dashboard reveale
 
 **Primary Goals**:
 1. Close critical API coverage gaps to enable production-ready fintech applications
-2. Build generic, reusable financial primitives (not tied to fin-infra-web)
+2. Build generic, reusable financial primitives (not tied to fin-web)
 3. Support MULTIPLE use cases: personal finance, wealth management, business accounting, investment tracking
 4. Achieve 80%+ overall API coverage for core financial features
 5. Maintain 100% test coverage with comprehensive documentation
@@ -57,7 +57,7 @@ On November 7, 2025, a comprehensive analysis of fin-infra-web dashboard reveale
 3. **Goals Module**: Financial goal tracking with milestones
 
 **Key Principles**:
-- **Generic Design**: Not specific to fin-infra-web; serves ANY fintech application
+- **Generic Design**: Not specific to fin-web; serves ANY fintech application
 - **svc-infra Reuse**: MANDATORY reuse of backend infrastructure (auth, DB, cache, jobs)
 - **Test-Driven**: Write tests alongside code, aim for 100% critical path coverage
 - **Comprehensive Docs**: 1,000+ line documentation per module
@@ -479,7 +479,7 @@ add_goals(app, prefix="/goals")
 
 ### Multiple Use Cases Supported
 
-Each module was designed to serve ANY fintech application, not just fin-infra-web:
+Each module was designed to serve ANY fintech application, not just fin-web:
 
 #### 1. Personal Finance Apps (Mint, YNAB, Personal Capital style)
 
@@ -577,7 +577,7 @@ Each module was designed to serve ANY fintech application, not just fin-infra-we
 
 ### 1. Generic First Pays Off
 
-**Challenge**: Initial temptation to design specifically for fin-infra-web dashboard
+**Challenge**: Initial temptation to design specifically for fin-web dashboard
 
 **Solution**: Designed for ANY fintech application (personal finance, wealth management, business, etc.)
 
@@ -669,7 +669,7 @@ Each module was designed to serve ANY fintech application, not just fin-infra-we
 4. **3,476+ Lines of Docs**: Clear documentation enables adoption
 5. **Zero Duplication**: Proper svc-infra reuse avoids maintenance burden
 6. **Multiple Use Cases**: Analytics, budgets, goals work for ANY fintech app
-7. **API-First Development**: fin-infra-web can now replace mock data with real APIs
+7. **API-First Development**: fin-web can now replace mock data with real APIs
 
 ### Negative
 
@@ -830,7 +830,7 @@ add_goals(app)
 - [Analytics Module Documentation](../analytics.md)
 - [Budgets Module Documentation](../budgets.md)
 - [Goals Module Documentation](../goals.md)
-- [Web API Coverage Analysis](../fin-infra-web-api-coverage-analysis.md)
+- [Web API Coverage Analysis](../fin-web-api-coverage-analysis.md)
 
 ### Architecture Decision Records
 
@@ -872,4 +872,4 @@ add_goals(app)
 
 **Next Steps**: Phase 2 will add rebalancing engine, scenario modeling, advanced projections, and enhanced AI insights.
 
-**Recommendation**: Begin migrating fin-infra-web dashboard to use real APIs (replace mock data) and start Phase 2 planning for advanced features.
+**Recommendation**: Begin migrating fin-web dashboard to use real APIs (replace mock data) and start Phase 2 planning for advanced features.
