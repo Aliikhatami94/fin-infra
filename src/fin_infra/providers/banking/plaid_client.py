@@ -11,7 +11,7 @@ from ...settings import Settings
 from ..base import BankingProvider
 
 
-class PlaidBanking(BankingProvider):
+class PlaidClient(BankingProvider):
     def __init__(self, settings: Settings | None = None) -> None:
         self.settings = settings or Settings()
         if PlaidClientSDK is None:
@@ -41,3 +41,34 @@ class PlaidBanking(BankingProvider):
 
     def accounts(self, access_token: str) -> list[dict]:
         return self.client.Accounts.get(access_token)["accounts"]  # type: ignore[attr-defined]
+
+    def transactions(
+        self, access_token: str, *, start_date: str | None = None, end_date: str | None = None
+    ) -> list[dict]:
+        """Fetch transactions for an access token within optional date range."""
+        options = {}
+        if start_date:
+            options["start_date"] = start_date
+        if end_date:
+            options["end_date"] = end_date
+        resp = self.client.Transactions.get(access_token, **options)  # type: ignore[attr-defined]
+        return resp.get("transactions", [])
+
+    def balances(self, access_token: str, account_id: str | None = None) -> dict:
+        """Fetch current balances for all accounts or specific account."""
+        resp = self.client.Accounts.balance.get(access_token)  # type: ignore[attr-defined]
+        accounts = resp.get("accounts", [])
+        
+        if account_id:
+            # Filter to specific account
+            for account in accounts:
+                if account.get("account_id") == account_id:
+                    return {"balances": [account.get("balances", {})]}
+            return {"balances": []}
+        
+        # Return all balances
+        return {"balances": [acc.get("balances", {}) for acc in accounts]}
+
+    def identity(self, access_token: str) -> dict:
+        """Fetch identity/account holder information."""
+        return self.client.Identity.get(access_token)  # type: ignore[attr-defined]
